@@ -15,6 +15,6 @@ fi
 python3 -m venv .venv
 source .venv/bin/activate
 pip install --upgrade pip
-pip install streamlink openai-whisper chat-downloader websocket-client curl_cffi
+pip install streamlink openai-whisper chat-downloader websocket-client curl_cffi google-api-python-client google-auth-oauthlib
 chmod +x watch.sh start.sh install.sh
 echo "Done. Double-click start.sh / start.command, or run ./watch.sh <channel>"

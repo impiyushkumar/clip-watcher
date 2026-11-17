@@ -39,4 +39,4 @@ streamlink --retry-streams 30 --retry-max 0 -o "$REC" "$URL" best &
 SL_PID=$!
 trap 'kill $SL_PID 2>/dev/null || true' EXIT
 
-python3 -u watcher.py "$CHANNEL" --platform "$PLATFORM" --rec "$REC" "$@" || true
+python3 -u watcher.py "$CHANNEL" --platform "$PLATFORM" --rec "$REC" --source-url "$URL" "$@" || true

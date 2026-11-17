@@ -15,7 +15,7 @@ from collections import deque
 
 BUCKET = 10          # seconds per bucket
 WINDOW = 18          # 3 min of history = 18 buckets
-PRE, POST = 20, 10   # clip seconds before / after the spike
+PRE, POST = 20, 10   # default clip seconds before / after the spike (see --length)
 
 
 def log(*a):
@@ -32,11 +32,11 @@ def wait_for_recording(path):
     return t0
 
 
-def cut_clip(rec, t0, spike_t, name, outdir, whisper_q):
+def cut_clip(rec, t0, spike_t, name, raw_dir, job_q):
     # wait until the POST seconds (+ a margin) exist in the recording
     time.sleep(max(0, spike_t + POST + 8 - time.time()))
     start = max(0.0, spike_t - t0 - PRE)
-    out = os.path.join(outdir, name + ".mp4")
+    out = os.path.join(raw_dir, name + ".mp4")
     cmd = [
         "ffmpeg", "-hide_banner", "-loglevel", "error", "-y",
         "-ss", f"{start:.2f}", "-i", rec, "-t", str(PRE + POST),
@@ -46,24 +46,21 @@ def cut_clip(rec, t0, spike_t, name, outdir, whisper_q):
     ]
     r = subprocess.run(cmd)
     if r.returncode == 0 and os.path.exists(out):
-        log(f"clip saved: {out}")
-        whisper_q.put(out)
+        log(f"raw clip saved: {out}")
+        job_q.put((out, name))
     else:
         log(f"ffmpeg failed for {name}")
 
 
-def whisper_worker(q, model, outdir):
+def post_worker(q, opts):
+    """One clip at a time: captions + hook + caption text + upload + log."""
+    import postprocess
     while True:
-        clip = q.get()
-        log(f"transcribing {os.path.basename(clip)} ...")
-        r = subprocess.run([
-            "whisper", clip, "--model", model, "--output_format", "srt",
-            "--output_dir", outdir, "--fp16", "False", "--verbose", "False",
-        ], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        if r.returncode == 0:
-            log(f"subtitles saved: {os.path.splitext(clip)[0]}.srt")
-        else:
-            log(f"whisper failed for {clip}")
+        raw, name = q.get()
+        try:
+            postprocess.process(raw, name, opts)
+        except Exception as e:
+            log(f"post-processing failed for {name}: {e}")
 
 
 def twitch_chat(channel):
@@ -164,15 +161,46 @@ def main():
     ap.add_argument("--factor", type=float, default=2.5)
     ap.add_argument("--model", default="base", help="whisper model")
     ap.add_argument("--clips", default="clips")
+    ap.add_argument("--length", type=int, default=30, help="clip length in seconds (2/3 before the spike)")
+    ap.add_argument("--upload", default="none", choices=["none", "youtube"])
+    ap.add_argument("--privacy", default="public", choices=["public", "unlisted", "private"])
+    ap.add_argument("--tags", default="#gaming #shorts #twitch")
+    ap.add_argument("--hook", default="wait for it...", help="hook text when nobody talks")
+    ap.add_argument("--source-url", default="")
     a = ap.parse_args()
     channel = a.channel if a.platform == "youtube" else a.channel.lower().lstrip("#")
     safe = "".join(c for c in channel if c.isalnum() or c in "_-")[-40:] or "clip"
-    os.makedirs(a.clips, exist_ok=True)
+    global PRE, POST
+    PRE = max(3, round(a.length * 2 / 3))
+    POST = max(2, a.length - PRE)
+    raw_dir = os.path.join(a.clips, "raw")
+    os.makedirs(raw_dir, exist_ok=True)
 
     wq = queue.Queue()
-    threading.Thread(target=whisper_worker, args=(wq, a.model, a.clips), daemon=True).start()
+    opts = {"model": a.model, "ready_dir": os.path.join(a.clips, "ready"),
+            "source_url": a.source_url or f"{a.platform}: {channel}", "tags": a.tags,
+            "hook_fallback": a.hook, "length": PRE + POST, "upload": a.upload,
+            "privacy": a.privacy, "scoreboard": os.path.join(a.clips, "scoreboard.csv")}
+    threading.Thread(target=post_worker, args=(wq, opts), daemon=True).start()
+    log(f"clips: {PRE}s before + {POST}s after each spike; upload: {a.upload}")
 
     t0 = wait_for_recording(a.rec)
+
+    def make_clip(at):
+        name = f"{a.platform}_{safe}_{time.strftime('%Y%m%d_%H%M%S', time.localtime(at))}"
+        log(f"clipping -> {name}")
+        threading.Thread(target=cut_clip, args=(a.rec, t0, at, name, raw_dir, wq),
+                         daemon=True).start()
+
+    def manual_keys():
+        """Press Enter in the terminal to clip the last moments yourself."""
+        nonlocal last_clip
+        for _ in sys.stdin:
+            with lock:
+                last_clip = time.time()
+            log("MANUAL clip")
+            make_clip(time.time())
+    lock = threading.Lock()
     history = deque(maxlen=WINDOW)
     bucket_start, count = time.time(), 0
     last_clip = 0.0
@@ -186,18 +214,14 @@ def main():
                 thr = max(a.min, a.factor * med)
                 if count >= thr and end - last_clip >= PRE + POST:
                     last_clip = end
-                    name = f"{a.platform}_{safe}_{time.strftime('%Y%m%d_%H%M%S', time.localtime(end))}"
-                    log(f"SPIKE {count} msgs (median {med:.1f}) -> {name}")
-                    threading.Thread(target=cut_clip,
-                                     args=(a.rec, t0, end, name, a.clips, wq),
-                                     daemon=True).start()
+                    log(f"SPIKE {count} msgs (median {med:.1f})")
+                    make_clip(end)
             history.append(count)
             if os.environ.get("CW_DEBUG"):
                 log(f"bucket: {count} msgs")
             bucket_start, count = end, 0
 
     # a ticker so empty buckets still close when chat is silent
-    lock = threading.Lock()
 
     def ticker():
         while True:
@@ -205,6 +229,9 @@ def main():
             with lock:
                 close_buckets(time.time())
     threading.Thread(target=ticker, daemon=True).start()
+    if sys.stdin.isatty():
+        threading.Thread(target=manual_keys, daemon=True).start()
+        log("tip: press Enter any time to clip the moment yourself")
 
     for ts in chat_lines(a.platform, channel):
         with lock:
