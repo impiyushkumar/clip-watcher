@@ -1,0 +1,5 @@
+rec/
+clips/
+.venv/
+config.txt
+__pycache__/

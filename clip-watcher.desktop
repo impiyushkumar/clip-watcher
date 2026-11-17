@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=Clip Watcher
+Comment=Record a Twitch stream and auto-clip chat spikes
+Exec=bash -c 'cd "$(dirname "%k")" && ./start.sh'
+Terminal=true
+Icon=video-x-generic
