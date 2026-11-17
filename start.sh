@@ -6,7 +6,7 @@ cd "$(dirname "$0")"
 CFG=config.txt
 [ -f "$CFG" ] && source "$CFG"
 if [ -z "${CHANNEL:-}" ]; then
-  read -rp "Twitch channel to watch: " CHANNEL
+  read -rp "Channel (xqc, youtube:@handle, kick:name): " CHANNEL
   read -rp "Min messages per 10s for a spike [10]: " MIN
   printf 'CHANNEL=%s\nMIN=%s\nMODEL=base\n' "$CHANNEL" "${MIN:-10}" > "$CFG"
 fi

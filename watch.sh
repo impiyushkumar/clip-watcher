@@ -1,12 +1,29 @@
 #!/usr/bin/env bash
-# Usage: ./watch.sh <twitch_channel> [--min N] [--factor 2.5] [--model base]
+# Usage: ./watch.sh <channel> [--min N] [--factor 2.5] [--model base]
+#   <channel>:  xqc | twitch:xqc | youtube:@handle | kick:slug
 set -euo pipefail
 cd "$(dirname "$0")"
 
 if [ $# -lt 1 ]; then
-  echo "Usage: $0 <twitch_channel> [--min N] [--factor F] [--model base]"; exit 1
+  echo "Usage: $0 <channel|twitch:name|youtube:@handle|kick:name> [--min N] [--factor F] [--model base]"; exit 1
 fi
-CHANNEL="$(echo "$1" | tr '[:upper:]' '[:lower:]')"; shift
+ARG="$1"; shift
+lower() { echo "$1" | tr '[:upper:]' '[:lower:]'; }
+case "$ARG" in
+  youtube:*|yt:*) PLATFORM=youtube; CHANNEL="${ARG#*:}" ;;
+  kick:*)         PLATFORM=kick;    CHANNEL="$(lower "${ARG#*:}")" ;;
+  twitch:*)       PLATFORM=twitch;  CHANNEL="$(lower "${ARG#*:}")" ;;
+  *)              PLATFORM=twitch;  CHANNEL="$(lower "$ARG")" ;;
+esac
+case "$PLATFORM" in
+  twitch)  URL="https://twitch.tv/$CHANNEL" ;;
+  kick)    URL="https://kick.com/$CHANNEL" ;;
+  youtube) case "$CHANNEL" in
+             http*) URL="$CHANNEL" ;;
+             UC*)   URL="https://www.youtube.com/channel/$CHANNEL/live" ;;
+             *)     URL="https://www.youtube.com/@${CHANNEL#@}/live" ;;
+           esac ;;
+esac
 
 [ -f .venv/bin/activate ] && source .venv/bin/activate
 for t in ffmpeg streamlink whisper python3; do
@@ -14,11 +31,12 @@ for t in ffmpeg streamlink whisper python3; do
 done
 
 mkdir -p rec clips
-REC="rec/${CHANNEL}_$(date +%Y%m%d_%H%M%S).ts"
+SAFE="$(echo "$CHANNEL" | tr -cd 'A-Za-z0-9_-' | tail -c 40)"
+REC="rec/${PLATFORM}_${SAFE}_$(date +%Y%m%d_%H%M%S).ts"
 
-echo "Recording twitch.tv/$CHANNEL -> $REC  (Ctrl+C to stop)"
-streamlink --retry-streams 30 --retry-max 0 -o "$REC" "https://twitch.tv/$CHANNEL" best &
+echo "Recording $URL -> $REC  (Ctrl+C to stop)"
+streamlink --retry-streams 30 --retry-max 0 -o "$REC" "$URL" best &
 SL_PID=$!
 trap 'kill $SL_PID 2>/dev/null || true' EXIT
 
-python3 -u watcher.py "$CHANNEL" --rec "$REC" "$@" || true
+python3 -u watcher.py "$CHANNEL" --platform "$PLATFORM" --rec "$REC" "$@" || true

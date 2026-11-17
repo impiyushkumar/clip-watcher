@@ -66,8 +66,8 @@ def whisper_worker(q, model, outdir):
             log(f"whisper failed for {clip}")
 
 
-def chat_lines(channel):
-    """Yield (timestamp) for every chat message, reconnecting forever."""
+def twitch_chat(channel):
+    """Twitch: anonymous IRC. Yields a timestamp per message, reconnecting forever."""
     while True:
         try:
             s = socket.create_connection(("irc.chat.twitch.tv", 6667), timeout=300)
@@ -91,16 +91,82 @@ def chat_lines(channel):
             time.sleep(5)
 
 
+def youtube_chat(channel):
+    """YouTube Live chat via chat-downloader. channel = @handle, channel id or video URL."""
+    from chat_downloader import ChatDownloader
+    if channel.startswith("http"):
+        url = channel
+    elif channel.startswith("UC") and len(channel) == 24:
+        url = f"https://www.youtube.com/channel/{channel}/live"
+    else:
+        url = f"https://www.youtube.com/@{channel.lstrip('@')}/live"
+    while True:
+        try:
+            log(f"connecting to YouTube chat {url}")
+            for _ in ChatDownloader().get_chat(url, message_groups=["messages"]):
+                yield time.time()
+            log("YouTube chat ended; retrying in 30s")
+        except Exception as e:
+            log(f"YouTube chat error: {e}; retrying in 30s")
+        time.sleep(30)
+
+
+KICK_PUSHER = ("wss://ws-us2.pusher.com/app/32cbd69e4b950bf97679"
+               "?protocol=7&client=js&version=8.4.0-rc2&flash=false")
+
+
+def kick_chatroom_id(slug):
+    url = f"https://kick.com/api/v2/channels/{slug}"
+    try:  # Kick sits behind Cloudflare; curl_cffi impersonates a real browser
+        from curl_cffi import requests as creq
+        return creq.get(url, impersonate="chrome", timeout=20).json()["chatroom"]["id"]
+    except ImportError:
+        import json
+        import urllib.request
+        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+        return json.load(urllib.request.urlopen(req, timeout=20))["chatroom"]["id"]
+
+
+def kick_chat(slug):
+    """Kick: public Pusher websocket, no login."""
+    import json
+    import websocket
+    room = None
+    while True:
+        try:
+            room = room or kick_chatroom_id(slug)
+            ws = websocket.create_connection(KICK_PUSHER, timeout=120)
+            ws.send(json.dumps({"event": "pusher:subscribe",
+                                "data": {"auth": "", "channel": f"chatrooms.{room}.v2"}}))
+            log(f"connected to Kick chat {slug} (room {room})")
+            while True:
+                msg = json.loads(ws.recv())
+                ev = msg.get("event", "")
+                if ev == "pusher:ping":
+                    ws.send(json.dumps({"event": "pusher:pong", "data": {}}))
+                elif ev.endswith("ChatMessageEvent"):
+                    yield time.time()
+        except Exception as e:
+            log(f"Kick chat error: {e}; reconnecting in 5s")
+            time.sleep(5)
+
+
+def chat_lines(platform, channel):
+    return {"twitch": twitch_chat, "youtube": youtube_chat, "kick": kick_chat}[platform](channel)
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("channel")
+    ap.add_argument("--platform", default="twitch", choices=["twitch", "youtube", "kick"])
     ap.add_argument("--rec", required=True, help="path of the live .ts recording")
     ap.add_argument("--min", type=int, default=10, help="min messages in a 10s bucket")
     ap.add_argument("--factor", type=float, default=2.5)
     ap.add_argument("--model", default="base", help="whisper model")
     ap.add_argument("--clips", default="clips")
     a = ap.parse_args()
-    channel = a.channel.lower().lstrip("#")
+    channel = a.channel if a.platform == "youtube" else a.channel.lower().lstrip("#")
+    safe = "".join(c for c in channel if c.isalnum() or c in "_-")[-40:] or "clip"
     os.makedirs(a.clips, exist_ok=True)
 
     wq = queue.Queue()
@@ -120,7 +186,7 @@ def main():
                 thr = max(a.min, a.factor * med)
                 if count >= thr and end - last_clip >= PRE + POST:
                     last_clip = end
-                    name = f"{channel}_{time.strftime('%Y%m%d_%H%M%S', time.localtime(end))}"
+                    name = f"{a.platform}_{safe}_{time.strftime('%Y%m%d_%H%M%S', time.localtime(end))}"
                     log(f"SPIKE {count} msgs (median {med:.1f}) -> {name}")
                     threading.Thread(target=cut_clip,
                                      args=(a.rec, t0, end, name, a.clips, wq),
@@ -140,7 +206,7 @@ def main():
                 close_buckets(time.time())
     threading.Thread(target=ticker, daemon=True).start()
 
-    for ts in chat_lines(channel):
+    for ts in chat_lines(a.platform, channel):
         with lock:
             close_buckets(ts)
             count += 1
