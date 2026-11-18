@@ -82,6 +82,9 @@ LAYOUT=fit        # whole 16:9 picture sharp in the middle + blurred background 
 ```
 Heavy jobs (cutting and captions) also run one at a time across all channels, so the server never chokes.
 
+## Disk use (rolling buffer)
+Streams are saved as 10-second pieces, and only the last `KEEP_MINUTES` (default 10) are kept per channel. A 1080p channel therefore uses about 0.5 GB of disk at any time instead of 3–4 GB per hour. Finished clips are kept in `clips/ready/`.
+
 ## Clip style
 - **Format:** full-screen 9:16 at 1080×1920 (`LAYOUT=crop`, `RES=1080x1920`, `QUALITY='best'`).
 - **Hook:** big **Anton** text at the top with a thick outline and no box. Anton is bundled in `fonts/` (SIL Open Font License); change it with `CW_FONT`.

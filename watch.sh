@@ -34,12 +34,18 @@ mkdir -p rec clips
 # housekeeping: drop recordings older than KEEP_REC_DAYS (default 1) and old raw clips
 find rec -name '*.ended' -mtime +0 -delete 2>/dev/null || true
 find rec -name '*.ts' -mtime +"${KEEP_REC_DAYS:-1}" -delete 2>/dev/null || true
+find rec -mindepth 1 -maxdepth 1 -type d -mmin +180 -exec rm -rf {} + 2>/dev/null || true
 find clips/raw -name '*.mp4' -mtime +3 -delete 2>/dev/null || true
 SAFE="$(echo "$CHANNEL" | tr -cd 'A-Za-z0-9_-' | tail -c 40)"
-REC="rec/${PLATFORM}_${SAFE}_$(date +%Y%m%d_%H%M%S).ts"
+# rolling buffer: the stream is saved as 10 s pieces; watcher.py keeps only the last
+# KEEP_MINUTES (default 10) so disk use stays ~0.5 GB per channel instead of 3-4 GB/hour
+REC="rec/${PLATFORM}_${SAFE}_$(date +%Y%m%d_%H%M%S)"
+mkdir -p "$REC"
 
-echo "Recording $URL -> $REC  (Ctrl+C to stop)"
-streamlink --retry-streams 30 --retry-max 0 -o "$REC" "$URL" "${QUALITY:-best}" &
+echo "Recording $URL -> $REC/  (Ctrl+C to stop)"
+streamlink --retry-streams 30 --retry-max 0 -O "$URL" "${QUALITY:-best}" | \
+  ffmpeg -hide_banner -loglevel error -i pipe:0 -map 0 -c copy -f segment -segment_time 10 \
+    -segment_list "$REC/list.csv" -segment_list_type csv "$REC/seg_%06d.ts" &
 SL_PID=$!
 trap 'kill $SL_PID 2>/dev/null || true' EXIT
 

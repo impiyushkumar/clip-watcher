@@ -22,17 +22,47 @@ def log(*a):
     print(time.strftime("[%H:%M:%S]"), *a, flush=True)
 
 
+def segments(rec):
+    """[(file, start, end)] from the rolling buffer's list (stream time, seconds)."""
+    out = []
+    try:
+        for line in open(os.path.join(rec, "list.csv")):
+            parts = line.strip().split(",")
+            if len(parts) >= 3:
+                out.append((os.path.join(rec, parts[0]), float(parts[1]), float(parts[2])))
+    except OSError:
+        pass
+    return out
+
+
 def wait_for_recording(path):
-    """Wait until streamlink has written data; that moment = t0 of the file."""
-    log(f"waiting for recording {path} ...")
-    while not (os.path.exists(path) and os.path.getsize(path) > 0):
+    """Wait for the first 10 s piece; that moment = t0 (wall clock) of stream time base."""
+    log(f"waiting for recording {path}/ ...")
+    while not segments(path):
         if os.path.exists(path + ".ended"):   # streamlink gave up before any video arrived
             log("no stream recorded - stopping")
             sys.exit(0)
         time.sleep(0.5)
-    t0 = time.time()
+    first = segments(path)[0]
+    t0 = time.time() - (first[2] - first[1])   # first piece just finished -> it started ~10 s ago
     log("recording started")
     return t0
+
+
+def buffer_janitor(rec, keep_s):
+    """Delete pieces older than keep_s so each channel only uses ~0.5 GB of disk."""
+    while True:
+        time.sleep(30)
+        segs = segments(rec)
+        if not segs:
+            continue
+        newest = segs[-1][2]
+        for f, st, en in segs:
+            if en < newest - keep_s and os.path.exists(f):
+                try:
+                    os.remove(f)
+                except OSError:
+                    pass
 
 
 PENDING = [0]
@@ -75,13 +105,28 @@ def vertical_filter():
 
 
 def cut_clip(rec, t0, spike_t, name, raw_dir, job_q, score=0):
-    # wait until the POST seconds (+ a margin) exist in the recording
-    time.sleep(max(0, spike_t + POST + 8 - time.time()))
-    start = max(0.0, spike_t - t0 - PRE)
+    segs = segments(rec)
+    base = segs[0][1] if segs else 0.0
+    want_a = base + max(0.0, spike_t - t0 - PRE)     # stream-time window of the clip
+    want_b = want_a + PRE + POST
+    deadline = time.time() + POST + 90
+    while time.time() < deadline:                    # wait until pieces cover the window end
+        segs = segments(rec)
+        if segs and segs[-1][2] >= want_b:
+            break
+        if os.path.exists(rec + ".ended") and segs:
+            break
+        time.sleep(2)
+    use = [x for x in segs if x[2] > want_a and x[1] < want_b and os.path.exists(x[0])]
     out = os.path.join(raw_dir, name + ".mp4")
+    if not use:
+        log(f"no recording for {name} (window already gone)")
+        pending(-1)
+        return
+    src = "concat:" + "|".join(x[0] for x in use)
     cmd = [
         "ffmpeg", "-hide_banner", "-loglevel", "error", "-y",
-        "-ss", f"{start:.2f}", "-i", rec, "-t", str(PRE + POST),
+        "-ss", f"{max(0.0, want_a - use[0][1]):.2f}", "-i", src, "-t", str(PRE + POST),
         "-filter_complex" if LAYOUT == "fit" else "-vf", vertical_filter(),
         "-c:v", "libx264", "-preset", "veryfast", "-crf", "20", "-threads", THREADS,
         "-c:a", "aac", "-b:a", "160k", "-movflags", "+faststart", out,
@@ -253,6 +298,8 @@ def main():
     log(f"clips: {PRE}s before + {POST}s after each spike; upload: {a.upload}")
 
     t0 = wait_for_recording(a.rec)
+    threading.Thread(target=buffer_janitor,
+                     args=(a.rec, int(os.environ.get("KEEP_MINUTES", "10")) * 60), daemon=True).start()
 
     def make_clip(at, score=0):
         name = f"{a.platform}_{safe}_{time.strftime('%Y%m%d_%H%M%S', time.localtime(at))}"
