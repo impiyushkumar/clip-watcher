@@ -119,7 +119,7 @@ def post_worker(q, opts):
         raw, name, score = q.get()
         try:
             with heavy_slot():
-                postprocess.process(raw, name, dict(opts, score=score))
+                postprocess.process(raw, name, dict(opts, score=score, spike_at=PRE))
         except Exception as e:
             log(f"post-processing failed for {name}: {e}")
         finally:

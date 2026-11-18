@@ -34,6 +34,22 @@ def ts(t):
     return f"{ms // 3600000:02}:{ms // 60000 % 60:02}:{ms // 1000 % 60:02},{ms % 1000:03}"
 
 
+def caption_chunks(result, max_words=3, max_chars=16):
+    """1-3 words at a time -> [(start, end, TEXT)]"""
+    chunks, cur = [], []
+    for seg in result.get("segments", []):
+        for wd in seg.get("words", []):
+            cur.append(wd)
+            text = "".join(x["word"] for x in cur).strip()
+            if len(cur) >= max_words or len(text) >= max_chars or text[-1:] in ".?!,":
+                chunks.append(cur)
+                cur = []
+    if cur:
+        chunks.append(cur)
+    return [(c[0]["start"], c[-1]["end"], "".join(x["word"] for x in c).strip().upper().rstrip(","))
+            for c in chunks]
+
+
 def write_short_srt(result, path, max_words=3, max_chars=18):
     """Short-form style: 1-3 words on screen at a time."""
     chunks, cur = [], []
@@ -53,7 +69,44 @@ def write_short_srt(result, path, max_words=3, max_chars=18):
     return len(chunks)
 
 
-def make_hook(result, fallback):
+def ai_hook(transcript, meta):
+    """Meme-style hook from Gemini (optional: set GEMINI_API_KEY in config.txt).
+    Returns None on any problem so the normal transcript hook is used."""
+    key = os.environ.get("GEMINI_API_KEY")
+    if not key:
+        return None
+    try:
+        import json
+        import requests
+        model = os.environ.get("GEMINI_MODEL", "gemini-flash-latest")
+        prompt = (
+            "You write on-screen hooks for viral short-form clips of live streamers.\n"
+            f"Streamer: {meta.get('creator') or 'unknown'}. Game/category: {meta.get('game') or 'unknown'}.\n"
+            f"What was said in the 30-second clip (auto transcript, may have errors):\n\"{transcript[:1500]}\"\n\n"
+            "Write ONE hook of 3-8 words in meme / Gen-Z clip-page style (e.g. 'HE REALLY THOUGHT HE HAD IT', "
+            "'CHAT WAS NOT READY FOR THIS'). Only use what the transcript supports - no made-up events, "
+            "no slurs, no claims about real people beyond the clip. No emojis, no hashtags, no quotes. "
+            'Reply as JSON: {"hook": "..."}')
+        r = requests.post(
+            f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent",
+            headers={"x-goog-api-key": key, "Content-Type": "application/json"},
+            json={"contents": [{"parts": [{"text": prompt}]}],
+                  "generationConfig": {"responseMimeType": "application/json", "temperature": 0.9}},
+            timeout=30)
+        r.raise_for_status()
+        text = r.json()["candidates"][0]["content"]["parts"][0]["text"]
+        hook = json.loads(text).get("hook", "").strip()
+        hook = re.sub(r"[^A-Za-z0-9 '?!.,&-]", "", hook).upper()
+        return hook if 2 <= len(hook.split()) <= 10 else None
+    except Exception as e:
+        log(f"AI hook skipped: {e}")
+        return None
+
+
+def make_hook(result, fallback, meta=None):
+    ai = ai_hook((result.get("text") or "").strip(), meta or {})
+    if ai:
+        return ai
     try:  # learned by learn.py from your own results
         import json
         n = int(json.load(open(os.path.join(os.path.dirname(os.path.abspath(__file__)),
@@ -67,25 +120,62 @@ def make_hook(result, fallback):
     return (hook + ("..." if len(words) > n else "")).upper()
 
 
-def burn(raw, srt, hook, out, has_captions=True):
+HERE = os.path.dirname(os.path.abspath(__file__))
+FONT_DIR = os.path.join(HERE, "fonts")
+FONT = os.environ.get("CW_FONT", "Anton")
+
+
+def ass_time(t):
+    cs = int(round(t * 100))
+    return f"{cs // 360000}:{cs // 6000 % 60:02}:{cs // 100 % 60:02}.{cs % 100:02}"
+
+
+def write_ass(path, chunks, hook, w=1080, h=1920):
+    """Clip-page style: big hook at the top (no box), word-by-word captions that pop in,
+    alternating white / yellow, thick black outline. Sizes are for a 1080x1920 canvas."""
+    hook_lines = "\\N".join(textwrap.wrap(hook, 16)[:3])
+    head = f"""[Script Info]
+ScriptType: v4.00+
+PlayResX: {w}
+PlayResY: {h}
+WrapStyle: 2
+
+[V4+ Styles]
+Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
+Style: Hook,{FONT},104,&H00FFFFFF,&H00FFFFFF,&H00000000,&H64000000,0,0,0,0,100,100,1,0,1,7,3,8,60,60,230,1
+Style: Cap,{FONT},128,&H00FFFFFF,&H00FFFFFF,&H00000000,&H64000000,0,0,0,0,100,100,2,0,1,8,4,2,60,60,560,1
+
+[Events]
+Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
+"""
+    ev = [f"Dialogue: 1,0:00:00.00,9:00:00.00,Hook,,0,0,0,,{{\\fad(150,0)}}{hook_lines}"]
+    for i, (st, en, text) in enumerate(chunks):
+        colour = "&H0000F0FF&" if i % 2 else "&H00FFFFFF&"  # yellow / white
+        pop = "{\\fscx70\\fscy70\\t(0,90,\\fscx108\\fscy108)\\t(90,160,\\fscx100\\fscy100)\\c" + colour + "}"
+        ev.append(f"Dialogue: 0,{ass_time(st)},{ass_time(max(en, st + 0.25))},Cap,,0,0,0,,{pop}{text}")
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(head + "\n".join(ev) + "\n")
+
+
+def burn(raw, srt, hook, out, has_captions=True, chunks=None, spike_at=None):
     d = os.path.dirname(os.path.abspath(out))
-    hook_file = os.path.join(d, ".hook.txt")
-    with open(hook_file, "w", encoding="utf-8") as f:
-        f.write("\n".join(textwrap.wrap(hook, 18)[:3]))
-    style = ("Fontname=DejaVu Sans,Bold=1,FontSize=13,PrimaryColour=&H00FFFFFF,"
-             "OutlineColour=&H00000000,BorderStyle=1,Outline=2.5,Shadow=0,"
-             "Alignment=2,MarginV=70")
-    subs = f"subtitles={os.path.basename(srt)}:force_style='{style}'," if has_captions else ""
-    vf = (subs + f"drawtext=textfile=.hook.txt:font='Sans':fontsize=68:fontcolor=white:"
-          f"line_spacing=12:box=1:boxcolor=black@0.65:boxborderw=24:"
-          f"x=(w-text_w)/2:y=230")
+    ass = os.path.join(d, ".style.ass")
+    w, h = os.environ.get("CW_RES", "1080x1920").split("x")
+    write_ass(ass, chunks if has_captions else [], hook, int(w), int(h))
+    vf = ""
+    if spike_at is not None and os.environ.get("CW_ZOOM", "1") == "1":
+        # meme "punch-in": quick 12% zoom right on the hype moment
+        a, b = max(0, spike_at - 0.3), spike_at + 1.4
+        vf += (f"zoompan=z='if(between(in_time,{a:.2f},{b:.2f}),1.12,1)':d=1:"
+               f"x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s={w}x{h}:fps=30,")
+    vf += f"subtitles=.style.ass:fontsdir='{FONT_DIR}'"
     cmd = ["ffmpeg", "-hide_banner", "-loglevel", "error", "-y",
            "-i", os.path.abspath(raw), "-vf", vf,
-           "-c:v", "libx264", "-preset", "veryfast", "-crf", "20",
+           "-c:v", "libx264", "-preset", "veryfast", "-crf", "19",
            "-threads", os.environ.get("CW_THREADS", "0"),
            "-c:a", "copy", "-movflags", "+faststart", os.path.basename(out)]
     ok = subprocess.run(cmd, cwd=d).returncode == 0
-    os.remove(hook_file)
+    os.remove(ass)
     return ok
 
 
@@ -173,9 +263,10 @@ def process(raw, name, o):
     result = transcribe(raw, o["model"])
     srt = os.path.join(o["ready_dir"], name + ".srt")
     n = write_short_srt(result, srt)
-    hook = make_hook(result, o["hook_fallback"])
+    hook = make_hook(result, o["hook_fallback"], o.get("meta"))
     final = os.path.join(o["ready_dir"], name + ".mp4")
-    if not burn(raw, srt, hook, final, has_captions=n > 0):
+    if not burn(raw, srt, hook, final, has_captions=n > 0, chunks=caption_chunks(result),
+                spike_at=o.get("spike_at")):
         log(f"caption burn failed for {name}; keeping raw clip only")
         return
     meta = o.get("meta") or {}

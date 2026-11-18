@@ -82,6 +82,13 @@ LAYOUT=fit        # whole 16:9 picture sharp in the middle + blurred background 
 ```
 Heavy jobs (cutting and captions) also run one at a time across all channels, so the server never chokes.
 
+## Clip style
+- **Format:** full-screen 9:16 at 1080×1920 (`LAYOUT=crop`, `RES=1080x1920`, `QUALITY='best'`).
+- **Hook:** big **Anton** text at the top with a thick outline and no box. Anton is bundled in `fonts/` (SIL Open Font License); change it with `CW_FONT`.
+- **Captions:** 1–3 words at a time that pop in, alternating white and yellow.
+- **Zoom punch:** a quick zoom on the hype moment. Turn it off with `ZOOM=0`.
+- **AI hooks (optional):** add `GEMINI_API_KEY='...'` to `config.txt` and Gemini writes a meme-style hook from what was said. It falls back to the transcript hook if the key is missing or the call fails. Keep the key only on your server; never commit it.
+
 ## Scheduled posting (per platform)
 Set how many posts a day each platform gets in `config.txt`:
 ```
