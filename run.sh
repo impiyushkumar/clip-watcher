@@ -14,6 +14,8 @@ CHANNELS="${CHANNELS:-$CHANNEL}"
 UPLOAD="$(UPLOAD="$UPLOAD" ./check_uploads.sh)"; echo "Uploading to: $UPLOAD"
 echo "Watching: $CHANNELS"
 trap 'kill 0' EXIT INT TERM
+# buffers from a previous run are useless after a restart - clear them so disk stays small
+rm -rf rec/*/ 2>/dev/null
 
 # scheduler: one poster for all channels (restarts itself if it crashes)
 if [ -n "${POSTS_PER_DAY:-}" ] || [ "${POST_EVERY:-0}" != "0" ]; then
