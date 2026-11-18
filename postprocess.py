@@ -9,7 +9,7 @@ import time
 
 _model = None
 SCORE_COLS = ["clip", "created", "source", "hook", "length_s", "youtube_url",
-              "views", "likes", "comments", "stats_updated"]
+              "views", "likes", "comments", "stats_updated", "instagram_url", "facebook_url"]
 
 
 def log(*a):
@@ -93,7 +93,7 @@ def append_score(path, row):
 
 def process(raw, name, o):
     """o: dict with model, ready_dir, source_url, tags, hook_fallback, length,
-    upload ('youtube'|'none'), privacy, scoreboard"""
+    upload: comma list of youtube,instagram,facebook (or none), privacy, scoreboard"""
     os.makedirs(o["ready_dir"], exist_ok=True)
     log(f"transcribing {name} ...")
     result = transcribe(raw, o["model"])
@@ -115,16 +115,28 @@ def process(raw, name, o):
             subprocess.run(["rclone", "copy", os.path.join(o["ready_dir"], name + ext), dest])
         log(f"synced to {dest}")
 
-    url = ""
-    if o["upload"] == "youtube":
+    targets = [t.strip() for t in o["upload"].split(",") if t.strip() and t.strip() != "none"]
+    urls = {}
+    for t in targets:
         try:
-            import uploader
-            title = (hook.capitalize()[:85] + " #Shorts")
-            url = uploader.upload(final, title, cap, o["tags"], o["privacy"])
-            log(f"UPLOADED to YouTube: {url} ({o['privacy']})")
+            if t == "youtube":
+                import uploader
+                title = hook.capitalize()[:85] + " #Shorts"
+                urls[t] = uploader.upload(final, title, cap, o["tags"], o["privacy"])
+            elif t == "instagram":
+                import meta_uploader
+                urls[t] = meta_uploader.upload_instagram(final, cap)
+            elif t == "facebook":
+                import meta_uploader
+                urls[t] = meta_uploader.upload_facebook(final, cap)
+            else:
+                log(f"unknown upload target {t!r}")
+                continue
+            log(f"UPLOADED to {t}: {urls[t]}")
         except Exception as e:
-            log(f"YouTube upload failed: {e}  (clip is still in {o['ready_dir']})")
+            log(f"{t} upload failed: {e}  (clip is still in {o['ready_dir']})")
     append_score(o["scoreboard"], {
         "clip": name, "created": time.strftime("%Y-%m-%d %H:%M"),
         "source": o["source_url"], "hook": hook, "length_s": o["length"],
-        "youtube_url": url})
+        "youtube_url": urls.get("youtube", ""), "instagram_url": urls.get("instagram", ""),
+        "facebook_url": urls.get("facebook", "")})

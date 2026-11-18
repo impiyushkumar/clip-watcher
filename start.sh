@@ -9,16 +9,16 @@ CFG=config.txt
 if [ -z "${CHANNEL:-}" ]; then ./configure.sh; source "$CFG"; fi
 export QUALITY KEEP_REC_DAYS CW_RCLONE_DEST
 
-if [ "${UPLOAD:-none}" = "youtube" ] && [ ! -f token.json ]; then
-  if [ ! -f client_secret.json ]; then
-    echo "YouTube upload needs client_secret.json in this folder - see README 'YouTube auto-upload'."
-    echo "Continuing WITHOUT upload for now (clips still go to clips/ready/)."
-    UPLOAD=none
-  else
-    echo "A browser will open: log in to the YouTube channel clips should go to."
-    python3 uploader.py --login || UPLOAD=none
-  fi
+if echo ",$UPLOAD," | grep -q ",youtube," && [ ! -f token.json ] && [ -f client_secret.json ]; then
+  echo "A browser will open: log in to the YouTube channel clips should go to."
+  python3 uploader.py --login
 fi
+if echo ",$UPLOAD," | grep -Eq ",(instagram|facebook)," && [ ! -f meta.json ]; then
+  echo "Instagram/Facebook upload needs a one-time Meta setup (README)."
+  read -rp "Run it now? (y/n) [n]: " M; [ "$M" = "y" ] && python3 meta_uploader.py --setup
+fi
+UPLOAD="$(./check_uploads.sh)"
+echo "Uploading to: $UPLOAD"
 
 ./watch.sh "$CHANNEL" --min "${MIN:-10}" --length "${LENGTH:-30}" --model "${MODEL:-base}" \
   --tags "${TAGS:-#gaming #shorts}" --upload "${UPLOAD:-none}" --privacy "${PRIVACY:-public}"

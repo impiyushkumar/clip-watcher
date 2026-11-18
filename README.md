@@ -19,7 +19,7 @@ On the first run it installs everything, asks a few questions (channel, clip len
 ## Command line
 ```bash
 ./install.sh
-./watch.sh <channel> [--min 10] [--length 30] [--upload youtube] [--privacy public]
+./watch.sh <channel> [--min 10] [--length 30] [--upload youtube,instagram,facebook] [--privacy public]
             [--tags "#gaming #shorts"] [--hook "wait for it..."] [--model base]
 ```
 
@@ -35,7 +35,7 @@ On the first run it installs everything, asks a few questions (channel, clip len
 3. Messages are counted in 10 s buckets. A bucket is a **spike** when it has at least `2.5 × median(last 3 min)` messages **and** at least `--min` messages. Detection starts after 1 minute of baseline.
 4. For each spike, ffmpeg cuts the clip (`--length`, default 30 s: 2/3 before the spike, 1/3 after), center-cropped to 9:16 at 1080×1920, into `clips/raw/`. **Press Enter** in the window to clip a moment yourself, which is useful when your chat is still small.
 5. Whisper transcribes it. Captions are burned in 1–3 words at a time (big, white, outlined). The first words become the **hook** at the top. The result goes to `clips/ready/` with a `.srt` and a `.txt` caption (hook, `🎥 source` credit, hashtags).
-6. If `--upload youtube`, it is uploaded as a YouTube Short (Gaming category) and logged in `clips/scoreboard.csv`.
+6. It is auto-posted to every target in `--upload` (YouTube Shorts, Instagram Reels, Facebook Reels), and the links are logged in `clips/scoreboard.csv`.
 
 ## YouTube auto-upload (one-time setup, free)
 1. Go to https://console.cloud.google.com/, create a project, and enable **YouTube Data API v3**.
@@ -45,7 +45,19 @@ On the first run it installs everything, asks a few questions (channel, clip len
 
 **Important:** Google locks uploads from new, unaudited API projects to **private**. Until your project passes Google's free [API audit](https://support.google.com/youtube/contact/yt_api_form), the clips upload as private and you switch them to public in YouTube Studio (one tap on the phone app). The quota allows about 6 uploads a day by default.
 
-**TikTok / Instagram / X:** take the file from `clips/ready/` and the text from the matching `.txt`. Syncing `clips/ready/` to Google Drive or iCloud lets you post from your phone in seconds.
+## Instagram + Facebook auto-upload (one-time setup, free)
+One Meta app posts every clip as an **Instagram Reel** and a **Facebook Page Reel**.
+1. On Instagram, switch your clipping account to **Professional (Creator or Business)**.
+2. Create a **Facebook Page** for the clipping page and link the Instagram account to it (Page settings → Linked accounts → Instagram).
+3. Go to https://developers.facebook.com/apps, then **Create app** → type **Business**. Add the products **Facebook Login for Business** and **Instagram** (Instagram API with Facebook Login).
+4. In **App settings → Basic**, copy the **App ID** and **App secret**.
+5. Open the [Graph API Explorer](https://developers.facebook.com/tools/explorer/), select your app, and add the permissions `pages_show_list, pages_read_engagement, pages_manage_posts, instagram_basic, instagram_content_publish, business_management`. Click **Generate Access Token** and approve it.
+6. Run `python3 meta_uploader.py --setup`, paste the App ID, App secret and token, and pick your Page. It saves `meta.json` with a long-lived Page token, so you don't need to log in again.
+7. Put `instagram,facebook` in `UPLOAD` in `config.txt` (e.g. `UPLOAD='youtube,instagram,facebook'`).
+
+The app can stay in **development mode**: it may post to accounts that you own and have a role on in the app, so no app review is needed for your own pages. Test with `python3 meta_uploader.py --test clips/ready/<clip>.mp4`.
+
+**TikTok / X:** their APIs need paid plans or app approval, so take the file from `clips/ready/` and the text from the matching `.txt`. Syncing `clips/ready/` to Google Drive or iCloud lets you post from your phone in seconds.
 
 ## Tracking what works
 ```bash

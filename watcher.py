@@ -162,7 +162,7 @@ def main():
     ap.add_argument("--model", default="base", help="whisper model")
     ap.add_argument("--clips", default="clips")
     ap.add_argument("--length", type=int, default=30, help="clip length in seconds (2/3 before the spike)")
-    ap.add_argument("--upload", default="none", choices=["none", "youtube"])
+    ap.add_argument("--upload", default="none", help="none, or any of youtube,instagram,facebook (comma separated)")
     ap.add_argument("--privacy", default="public", choices=["public", "unlisted", "private"])
     ap.add_argument("--tags", default="#gaming #shorts #twitch")
     ap.add_argument("--hook", default="wait for it...", help="hook text when nobody talks")
