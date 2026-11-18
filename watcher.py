@@ -62,6 +62,16 @@ def heavy_slot():
 
 RES = os.environ.get("CW_RES", "1080x1920")      # output size, e.g. 720x1280 on small servers
 THREADS = os.environ.get("CW_THREADS", "0")       # ffmpeg threads (0 = auto)
+LAYOUT = os.environ.get("CW_LAYOUT", "crop")      # crop = fill screen (cuts sides), fit = whole frame + blurred background
+
+
+def vertical_filter():
+    w, h = RES.split("x")
+    if LAYOUT == "fit":   # full 16:9 picture, sharp, centered; blurred copy fills top/bottom
+        return (f"split[a][b];[a]scale={w}:{h}:force_original_aspect_ratio=increase,crop={w}:{h},"
+                f"boxblur=20:2[bg];[b]scale={w}:-2:flags=lanczos[fg];"
+                f"[bg][fg]overlay=(W-w)/2:(H-h)/2,setsar=1")
+    return f"crop='trunc(ih*9/16/2)*2':ih,scale={w}:{h}:flags=lanczos,setsar=1"
 
 
 def cut_clip(rec, t0, spike_t, name, raw_dir, job_q, score=0):
@@ -72,7 +82,7 @@ def cut_clip(rec, t0, spike_t, name, raw_dir, job_q, score=0):
     cmd = [
         "ffmpeg", "-hide_banner", "-loglevel", "error", "-y",
         "-ss", f"{start:.2f}", "-i", rec, "-t", str(PRE + POST),
-        "-vf", f"crop='trunc(ih*9/16/2)*2':ih,scale={RES.replace('x', ':')},setsar=1",
+        "-filter_complex" if LAYOUT == "fit" else "-vf", vertical_filter(),
         "-c:v", "libx264", "-preset", "veryfast", "-crf", "20", "-threads", THREADS,
         "-c:a", "aac", "-b:a", "160k", "-movflags", "+faststart", out,
     ]

@@ -74,6 +74,12 @@ THREADS=1         # one CPU thread per job
 FACTOR=3          # only bigger spikes
 COOLDOWN=300      # at most one clip per channel every 5 min
 ```
+**Sharper clips:** record at full quality and keep the whole frame:
+```
+QUALITY='best'    # 1080p60 source
+RES=1080x1920
+LAYOUT=fit        # whole 16:9 picture sharp in the middle + blurred background (crop = fill screen, cuts the sides)
+```
 Heavy jobs (cutting and captions) also run one at a time across all channels, so the server never chokes.
 
 ## Scheduled posting (per platform)
