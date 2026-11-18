@@ -89,12 +89,19 @@ def caption_text(hook, source_url, tags):
 
 
 def append_score(path, row):
-    new = not os.path.exists(path)
-    with open(path, "a", newline="", encoding="utf-8") as f:
-        w = csv.DictWriter(f, fieldnames=SCORE_COLS)
-        if new:
-            w.writeheader()
-        w.writerow({k: row.get(k, "") for k in SCORE_COLS})
+    """One row per clip: adds the row, or fills new fields into the existing one."""
+    rows = list(csv.DictReader(open(path, encoding="utf-8"))) if os.path.exists(path) else []
+    for r in rows:
+        if r.get("clip") == row.get("clip"):
+            r.update({k: v for k, v in row.items() if v})
+            break
+    else:
+        rows.append(row)
+    cols = SCORE_COLS + [c for c in (rows[0].keys() if rows else []) if c not in SCORE_COLS]
+    with open(path, "w", newline="", encoding="utf-8") as f:
+        w = csv.DictWriter(f, fieldnames=cols)
+        w.writeheader()
+        w.writerows({k: r.get(k, "") for k in cols} for r in rows)
 
 
 def process(raw, name, o):

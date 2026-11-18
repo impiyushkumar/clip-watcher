@@ -59,13 +59,18 @@ The app can stay in **development mode**: it may post to accounts that you own a
 
 **TikTok / X:** their APIs need paid plans or app approval, so take the file from `clips/ready/` and the text from the matching `.txt`. Syncing `clips/ready/` to Google Drive or iCloud lets you post from your phone in seconds.
 
-## Post every 4 hours (scheduled)
-Set `POST_EVERY=4` in `config.txt` (the default from `configure.sh`; `0` posts each clip right away). Finished clips go to `clips/queue/`, and `poster.py` posts **one clip every 4 hours** to all your `UPLOAD` targets:
-- **Order:** your manual picks (Enter key) go first, then the clip with the **biggest chat spike**.
-- **Expiry:** clips older than 48 h are skipped, since old moments don't perform.
-- **Start:** the first clip is posted as soon as one is ready; after that, one every 4 hours.
+## Scheduled posting (per platform)
+Set how many posts a day each platform gets in `config.txt`:
+```
+POSTS_PER_DAY='youtube=6,instagram=10,facebook=10'
+```
+- **Schedule:** finished clips wait in `clips/queue/`. Each platform posts on its own clock: YouTube every 4 h and Instagram/Facebook every 2.4 h in this example.
+- **Choice:** each time a platform is due, it gets the best clip it hasn't posted yet (your Enter-key picks first, then the biggest chat spike).
+- **Clean-up:** a clip leaves the queue once every platform has it. Clips older than 48 h are skipped.
+- **Empty queue:** if there's nothing new (streamer offline), it simply waits.
+- **YouTube limit:** about 6 uploads a day on the free API quota, so keep `youtube=6` or lower.
 
-Post the best queued clip right now: `python3 poster.py --once --upload youtube,instagram,facebook`
+Post the best clip everywhere right now: `python3 poster.py --once --per-day "youtube=6,instagram=10,facebook=10"`
 
 ## Self-learning (automatic)
 With `AUTO_LEARN=1` (the default), clip-watcher improves itself from your own results. No outside service or AI is involved:

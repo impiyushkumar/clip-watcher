@@ -12,10 +12,11 @@ while true; do
     echo "Self-learning on: clip length this stream = ${LENGTH}s"
   fi
   QARGS=()
-  if [ "${POST_EVERY:-0}" != "0" ]; then
+  if [ -n "${POSTS_PER_DAY:-}" ] || [ "${POST_EVERY:-0}" != "0" ]; then
     QARGS=(--queue clips/queue --upload none)
     pkill -f "poster.py" 2>/dev/null
-    python3 -u poster.py --every "$POST_EVERY" --upload "$UPLOAD" --tags "${TAGS:-#gaming #shorts}" \
+    CW_ALLOWED="$UPLOAD" python3 -u poster.py --per-day "${POSTS_PER_DAY:-}" --every "${POST_EVERY:-4}" \
+      --upload "$UPLOAD" --tags "${TAGS:-#gaming #shorts}" \
       --privacy "${PRIVACY:-public}" &
   fi
   ./watch.sh "$CHANNEL" --min "${MIN:-10}" --length "${LENGTH:-30}" --model "${MODEL:-base}" \
