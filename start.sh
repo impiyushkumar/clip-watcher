@@ -20,6 +20,14 @@ fi
 UPLOAD="$(./check_uploads.sh)"
 echo "Uploading to: $UPLOAD"
 
-./watch.sh "$CHANNEL" --min "${MIN:-10}" --length "${LENGTH:-30}" --model "${MODEL:-base}" \
-  --tags "${TAGS:-#gaming #shorts}" --upload "${UPLOAD:-none}" --privacy "${PRIVACY:-public}"
+QARGS=()
+  if [ "${POST_EVERY:-0}" != "0" ]; then
+    QARGS=(--queue clips/queue --upload none)
+    pkill -f "poster.py" 2>/dev/null
+    python3 -u poster.py --every "$POST_EVERY" --upload "$UPLOAD" --tags "${TAGS:-#gaming #shorts}" \
+      --privacy "${PRIVACY:-public}" &
+  fi
+  ./watch.sh "$CHANNEL" --min "${MIN:-10}" --length "${LENGTH:-30}" --model "${MODEL:-base}" \
+  --tags "${TAGS:-#gaming #shorts}" --upload "${UPLOAD:-none}" --privacy "${PRIVACY:-public}" "${QARGS[@]}"
+pkill -f poster.py 2>/dev/null
 read -rp "Stopped. Press Enter to close..."

@@ -59,6 +59,17 @@ The app can stay in **development mode**: it may post to accounts that you own a
 
 **TikTok / X:** their APIs need paid plans or app approval, so take the file from `clips/ready/` and the text from the matching `.txt`. Syncing `clips/ready/` to Google Drive or iCloud lets you post from your phone in seconds.
 
+## Post every 4 hours (scheduled)
+Set `POST_EVERY=4` in `config.txt` (the default from `configure.sh`; `0` posts each clip right away). Finished clips go to `clips/queue/`, and `poster.py` posts **one clip every 4 hours** to all your `UPLOAD` targets:
+- **Order:** your manual picks (Enter key) go first, then the clip with the **biggest chat spike**.
+- **Expiry:** clips older than 48 h are skipped, since old moments don't perform.
+- **Start:** the first clip is posted as soon as one is ready; after that, one every 4 hours.
+
+Post the best queued clip right now: `python3 poster.py --once --upload youtube,instagram,facebook`
+
+## Earning from clipping
+Many streamers and brands **pay clippers per view** through clipping campaigns, e.g. on Whop's Content Rewards marketplace. Rates are usually around **$1 per 1,000 views** (often $0.20–$5) and are paid only on approved, verified views while the campaign budget lasts. Each campaign has its own rules (which streams, hashtags, tags, length), so set `CHANNEL`, `TAGS` and `LENGTH` in `config.txt` to match the campaign you joined.
+
 ## Tracking what works
 ```bash
 python3 uploader.py --stats

@@ -115,14 +115,30 @@ def process(raw, name, o):
             subprocess.run(["rclone", "copy", os.path.join(o["ready_dir"], name + ext), dest])
         log(f"synced to {dest}")
 
-    targets = [t.strip() for t in o["upload"].split(",") if t.strip() and t.strip() != "none"]
+    item = {"clip": name, "final": final, "caption": cap, "hook": hook,
+            "score": o.get("score", 0), "created": time.strftime("%Y-%m-%d %H:%M"),
+            "created_ts": time.time(), "source": o["source_url"], "length_s": o["length"]}
+    if o.get("queue_dir"):  # scheduled mode: poster.py posts the best clip every N hours
+        import json
+        os.makedirs(o["queue_dir"], exist_ok=True)
+        with open(os.path.join(o["queue_dir"], name + ".json"), "w", encoding="utf-8") as f:
+            json.dump(item, f, indent=1)
+        log(f"queued for posting: {name} (score {item['score']})")
+        return
+    post_item(item, o["upload"], o["tags"], o["privacy"], o["scoreboard"], o["ready_dir"])
+
+
+def post_item(item, upload, tags, privacy, scoreboard, ready_dir="clips/ready"):
+    """Upload one finished clip to every target and log it. Returns {target: url}."""
+    final, cap, hook = item["final"], item["caption"], item["hook"]
+    targets = [t.strip() for t in upload.split(",") if t.strip() and t.strip() != "none"]
     urls = {}
     for t in targets:
         try:
             if t == "youtube":
                 import uploader
                 title = hook.capitalize()[:85] + " #Shorts"
-                urls[t] = uploader.upload(final, title, cap, o["tags"], o["privacy"])
+                urls[t] = uploader.upload(final, title, cap, tags, privacy)
             elif t == "instagram":
                 import meta_uploader
                 urls[t] = meta_uploader.upload_instagram(final, cap)
@@ -134,9 +150,10 @@ def process(raw, name, o):
                 continue
             log(f"UPLOADED to {t}: {urls[t]}")
         except Exception as e:
-            log(f"{t} upload failed: {e}  (clip is still in {o['ready_dir']})")
-    append_score(o["scoreboard"], {
-        "clip": name, "created": time.strftime("%Y-%m-%d %H:%M"),
-        "source": o["source_url"], "hook": hook, "length_s": o["length"],
+            log(f"{t} upload failed: {e}  (clip is still in {ready_dir})")
+    append_score(scoreboard, {
+        "clip": item["clip"], "created": item["created"], "source": item["source"],
+        "hook": hook, "length_s": item["length_s"],
         "youtube_url": urls.get("youtube", ""), "instagram_url": urls.get("instagram", ""),
         "facebook_url": urls.get("facebook", "")})
+    return urls

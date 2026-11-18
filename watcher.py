@@ -32,7 +32,7 @@ def wait_for_recording(path):
     return t0
 
 
-def cut_clip(rec, t0, spike_t, name, raw_dir, job_q):
+def cut_clip(rec, t0, spike_t, name, raw_dir, job_q, score=0):
     # wait until the POST seconds (+ a margin) exist in the recording
     time.sleep(max(0, spike_t + POST + 8 - time.time()))
     start = max(0.0, spike_t - t0 - PRE)
@@ -47,7 +47,7 @@ def cut_clip(rec, t0, spike_t, name, raw_dir, job_q):
     r = subprocess.run(cmd)
     if r.returncode == 0 and os.path.exists(out):
         log(f"raw clip saved: {out}")
-        job_q.put((out, name))
+        job_q.put((out, name, score))
     else:
         log(f"ffmpeg failed for {name}")
 
@@ -56,9 +56,9 @@ def post_worker(q, opts):
     """One clip at a time: captions + hook + caption text + upload + log."""
     import postprocess
     while True:
-        raw, name = q.get()
+        raw, name, score = q.get()
         try:
-            postprocess.process(raw, name, opts)
+            postprocess.process(raw, name, dict(opts, score=score))
         except Exception as e:
             log(f"post-processing failed for {name}: {e}")
 
@@ -167,6 +167,7 @@ def main():
     ap.add_argument("--tags", default="#gaming #shorts #twitch")
     ap.add_argument("--hook", default="wait for it...", help="hook text when nobody talks")
     ap.add_argument("--source-url", default="")
+    ap.add_argument("--queue", default="", help="queue folder: don't post now, let poster.py post on a schedule")
     a = ap.parse_args()
     channel = a.channel if a.platform == "youtube" else a.channel.lower().lstrip("#")
     safe = "".join(c for c in channel if c.isalnum() or c in "_-")[-40:] or "clip"
@@ -180,16 +181,17 @@ def main():
     opts = {"model": a.model, "ready_dir": os.path.join(a.clips, "ready"),
             "source_url": a.source_url or f"{a.platform}: {channel}", "tags": a.tags,
             "hook_fallback": a.hook, "length": PRE + POST, "upload": a.upload,
-            "privacy": a.privacy, "scoreboard": os.path.join(a.clips, "scoreboard.csv")}
+            "privacy": a.privacy, "scoreboard": os.path.join(a.clips, "scoreboard.csv"),
+            "queue_dir": a.queue}
     threading.Thread(target=post_worker, args=(wq, opts), daemon=True).start()
     log(f"clips: {PRE}s before + {POST}s after each spike; upload: {a.upload}")
 
     t0 = wait_for_recording(a.rec)
 
-    def make_clip(at):
+    def make_clip(at, score=0):
         name = f"{a.platform}_{safe}_{time.strftime('%Y%m%d_%H%M%S', time.localtime(at))}"
         log(f"clipping -> {name}")
-        threading.Thread(target=cut_clip, args=(a.rec, t0, at, name, raw_dir, wq),
+        threading.Thread(target=cut_clip, args=(a.rec, t0, at, name, raw_dir, wq, score),
                          daemon=True).start()
 
     def manual_keys():
@@ -199,7 +201,7 @@ def main():
             with lock:
                 last_clip = time.time()
             log("MANUAL clip")
-            make_clip(time.time())
+            make_clip(time.time(), score=10**6)  # your own picks go first
     lock = threading.Lock()
     history = deque(maxlen=WINDOW)
     bucket_start, count = time.time(), 0
@@ -215,7 +217,7 @@ def main():
                 if count >= thr and end - last_clip >= PRE + POST:
                     last_clip = end
                     log(f"SPIKE {count} msgs (median {med:.1f})")
-                    make_clip(end)
+                    make_clip(end, score=count)
             history.append(count)
             if os.environ.get("CW_DEBUG"):
                 log(f"bucket: {count} msgs")
