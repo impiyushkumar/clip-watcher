@@ -59,6 +59,13 @@ The app can stay in **development mode**: it may post to accounts that you own a
 
 **TikTok / X:** their APIs need paid plans or app approval, so take the file from `clips/ready/` and the text from the matching `.txt`. Syncing `clips/ready/` to Google Drive or iCloud lets you post from your phone in seconds.
 
+## Watch several streamers at once
+In `config.txt`:
+```
+CHANNELS='kaicenat,ohnepixel,kick:n3on'
+```
+Each channel is watched in parallel: it waits for that streamer to go live, clips their hype moments, and starts waiting again when the stream ends. All clips go into one queue, and the scheduler posts the best ones. A 2-CPU server handles about **3 channels** comfortably. Restart after changing: `sudo systemctl restart clip-watcher`.
+
 ## Scheduled posting (per platform)
 Set how many posts a day each platform gets in `config.txt`:
 ```

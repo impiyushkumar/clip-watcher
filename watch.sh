@@ -32,6 +32,7 @@ done
 
 mkdir -p rec clips
 # housekeeping: drop recordings older than KEEP_REC_DAYS (default 1) and old raw clips
+find rec -name '*.ended' -mtime +0 -delete 2>/dev/null || true
 find rec -name '*.ts' -mtime +"${KEEP_REC_DAYS:-1}" -delete 2>/dev/null || true
 find clips/raw -name '*.mp4' -mtime +3 -delete 2>/dev/null || true
 SAFE="$(echo "$CHANNEL" | tr -cd 'A-Za-z0-9_-' | tail -c 40)"
@@ -44,7 +45,8 @@ trap 'kill $SL_PID 2>/dev/null || true' EXIT
 
 # when the stream ends: give pending clips 3 min to finish, then stop the watcher
 ( while kill -0 $SL_PID 2>/dev/null; do sleep 5; done
-  echo "Stream ended - finishing pending clips..."; sleep "${STREAM_END_GRACE:-180}"
+  echo "Stream ended - finishing pending clips..."; touch "$REC.ended"
+  sleep "${STREAM_END_GRACE:-900}"   # safety net: force-stop after 15 min
   pkill -f -- "--rec $REC" 2>/dev/null ) &
 
 python3 -u watcher.py "$CHANNEL" --platform "$PLATFORM" --rec "$REC" --source-url "$URL" "$@" || true

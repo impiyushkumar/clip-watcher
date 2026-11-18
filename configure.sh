@@ -2,7 +2,8 @@
 # Asks the setup questions and writes config.txt (run again any time to change settings).
 cd "$(dirname "$0")"
 echo "=== clip-watcher setup (saved to config.txt) ==="
-read -rp "Channel (xqc, youtube:@handle, kick:name): " CHANNEL
+echo "Channels to watch, comma separated (up to 3 on a 2-CPU server), e.g. kaicenat,ohnepixel,kick:n3on"
+read -rp "Channels: " CHANNELS
 read -rp "Min chat messages per 10s for a spike [10]: " MIN
 read -rp "Clip length in seconds [30]: " LENGTH
 read -rp "Hashtags [#gaming #shorts #twitch]: " TAGS
@@ -13,7 +14,7 @@ read -rp "Whisper model tiny/base/small [base]: " MODEL
 read -rp "Recording quality (best, 720p60, 720p...) [best]: " QUALITY
 UPLOAD="$(echo "${UPLOAD:-none}" | tr -d ' ' | tr '[:upper:]' '[:lower:]')"
 {
-  echo "CHANNEL='$CHANNEL'"; echo "MIN=${MIN:-10}"; echo "LENGTH=${LENGTH:-30}"
+  echo "CHANNELS='$(echo "$CHANNELS" | tr -d ' ')'"; echo "MIN=${MIN:-10}"; echo "LENGTH=${LENGTH:-30}"
   echo "TAGS='${TAGS:-#gaming #shorts #twitch}'"; echo "UPLOAD='$UPLOAD'"
   echo "PRIVACY=public"; echo "MODEL=${MODEL:-base}"; echo "QUALITY='${QUALITY:-best}'"
   echo "POSTS_PER_DAY='${POSTS_PER_DAY:-youtube=6,instagram=10,facebook=10}'"; echo "KEEP_REC_DAYS=1"; echo "AUTO_LEARN=1"

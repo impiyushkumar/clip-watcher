@@ -26,10 +26,22 @@ def wait_for_recording(path):
     """Wait until streamlink has written data; that moment = t0 of the file."""
     log(f"waiting for recording {path} ...")
     while not (os.path.exists(path) and os.path.getsize(path) > 0):
+        if os.path.exists(path + ".ended"):   # streamlink gave up before any video arrived
+            log("no stream recorded - stopping")
+            sys.exit(0)
         time.sleep(0.5)
     t0 = time.time()
     log("recording started")
     return t0
+
+
+PENDING = [0]
+PENDING_LOCK = threading.Lock()
+
+
+def pending(delta):
+    with PENDING_LOCK:
+        PENDING[0] += delta
 
 
 def cut_clip(rec, t0, spike_t, name, raw_dir, job_q, score=0):
@@ -50,6 +62,7 @@ def cut_clip(rec, t0, spike_t, name, raw_dir, job_q, score=0):
         job_q.put((out, name, score))
     else:
         log(f"ffmpeg failed for {name}")
+        pending(-1)
 
 
 def post_worker(q, opts):
@@ -61,6 +74,8 @@ def post_worker(q, opts):
             postprocess.process(raw, name, dict(opts, score=score))
         except Exception as e:
             log(f"post-processing failed for {name}: {e}")
+        finally:
+            pending(-1)
 
 
 def twitch_chat(channel):
@@ -191,6 +206,7 @@ def main():
     def make_clip(at, score=0):
         name = f"{a.platform}_{safe}_{time.strftime('%Y%m%d_%H%M%S', time.localtime(at))}"
         log(f"clipping -> {name}")
+        pending(+1)
         threading.Thread(target=cut_clip, args=(a.rec, t0, at, name, raw_dir, wq, score),
                          daemon=True).start()
 
@@ -230,6 +246,10 @@ def main():
             time.sleep(1)
             with lock:
                 close_buckets(time.time())
+            # stream ended (watch.sh drops a marker) and every clip is finished -> exit
+            if os.path.exists(a.rec + ".ended") and PENDING[0] <= 0:
+                log("stream over and all clips finished - stopping")
+                os._exit(0)
     threading.Thread(target=ticker, daemon=True).start()
     if sys.stdin.isatty():
         threading.Thread(target=manual_keys, daemon=True).start()
