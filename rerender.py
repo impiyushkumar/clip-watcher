@@ -14,10 +14,20 @@ import json
 import os
 import sys
 
-import postprocess
-
 HERE = os.path.dirname(os.path.abspath(__file__))
 os.chdir(HERE)
+# use the same settings as the service (config.txt -> the env names run.sh exports)
+MAP = {"RES": "CW_RES", "THREADS": "CW_THREADS", "HOOK": "CW_HOOK", "ZOOM": "CW_ZOOM",
+       "CTA": "CW_CTA", "GEMINI_API_KEY": "GEMINI_API_KEY", "GEMINI_MODEL": "GEMINI_MODEL",
+       "MEME_CHANCE": "MEME_CHANCE", "MEME_SECONDS": "MEME_SECONDS", "MODEL": "MODEL", "TAGS": "TAGS"}
+if os.path.exists("config.txt"):
+    for line in open("config.txt", encoding="utf-8"):
+        if "=" in line and not line.lstrip().startswith("#"):
+            k, v = line.strip().split("=", 1)
+            if k in MAP and v.strip("'\""):
+                os.environ.setdefault(MAP[k], v.strip("'\""))
+import postprocess  # noqa: E402  (after env is set)
+
 drop = "--drop-missing" in sys.argv
 done = missing = 0
 for path in sorted(glob.glob("clips/queue/*.json")):
