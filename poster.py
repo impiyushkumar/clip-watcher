@@ -26,7 +26,8 @@ ap.add_argument("--tags", default="#gaming #shorts")
 ap.add_argument("--privacy", default="public")
 ap.add_argument("--queue", default="clips/queue")
 ap.add_argument("--scoreboard", default="clips/scoreboard.csv")
-ap.add_argument("--max-age", type=float, default=48, help="drop queued clips older than this (hours)")
+ap.add_argument("--max-age", type=float, default=float(os.environ.get("MAX_AGE_H", "0")),
+                help="drop queued clips older than this many hours (0 = never, keep until posted)")
 ap.add_argument("--once", action="store_true", help="post the best clip to every target now and exit")
 a = ap.parse_args()
 
@@ -57,7 +58,8 @@ def queue_items():
     items = []
     for p in glob.glob(os.path.join(a.queue, "*.json")):
         it = json.load(open(p, encoding="utf-8"))
-        if time.time() - it["created_ts"] > a.max_age * 3600 or not os.path.exists(it["final"]):
+        too_old = a.max_age > 0 and time.time() - it["created_ts"] > a.max_age * 3600
+        if too_old or not os.path.exists(it["final"]):
             shutil.move(p, old_dir)
             continue
         items.append((p, it))
@@ -111,6 +113,22 @@ def cleanup():
         if now - os.path.getmtime(f) > 86400:
             freed += os.path.getsize(f)
             os.remove(f)
+    # disk guard: only if the disk is really getting full, drop the WEAKEST unposted clips
+    limit = float(os.environ.get("DISK_LIMIT", "80"))
+    du = shutil.disk_usage(".")
+    if du.used / du.total * 100 > limit:
+        items = sorted(queue_items(), key=lambda x: (x[1]["score"], x[1]["created_ts"]))
+        for path, it in items:
+            du = shutil.disk_usage(".")
+            if du.used / du.total * 100 <= limit - 5:
+                break
+            base = os.path.splitext(it["final"])[0]
+            for ext in (".mp4", ".srt", ".txt"):
+                if os.path.exists(base + ext):
+                    freed += os.path.getsize(base + ext)
+                    os.remove(base + ext)
+            os.remove(path)
+            postprocess.log(f"disk over {limit:.0f}%: dropped weakest unposted clip {it['clip']} (score {it['score']})")
     if freed:
         postprocess.log(f"cleanup: freed {freed / 1e9:.2f} GB")
 
@@ -118,7 +136,7 @@ def cleanup():
 last_learn = 0
 last_clean = 0
 while True:
-    if time.time() - last_clean > 3600:
+    if time.time() - last_clean > 600:
         cleanup()
         last_clean = time.time()
     if time.time() - last_learn > 12 * 3600:   # relearn twice a day

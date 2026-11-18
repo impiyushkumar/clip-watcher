@@ -6,7 +6,7 @@
 cd "$(dirname "$0")"
 source .venv/bin/activate
 source config.txt
-export QUALITY KEEP_REC_DAYS CW_RCLONE_DEST KEEP_MINUTES KEEP_CLIP_DAYS
+export QUALITY KEEP_REC_DAYS CW_RCLONE_DEST KEEP_MINUTES KEEP_CLIP_DAYS MAX_AGE_H DISK_LIMIT
 # small-server tuning (set in config.txt): output size, CPU threads per job
 export CW_RES="${RES:-1080x1920}" CW_THREADS="${THREADS:-0}" CW_LAYOUT="${LAYOUT:-crop}" CW_CTA="${CTA:-Follow for daily stream clips 🔥}" GEMINI_API_KEY="${GEMINI_API_KEY:-}" GEMINI_MODEL="${GEMINI_MODEL:-gemini-flash-latest}" CW_ZOOM="${ZOOM:-1}"
 CHANNELS="${CHANNELS:-$CHANNEL}"
