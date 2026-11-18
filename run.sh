@@ -8,7 +8,7 @@ source .venv/bin/activate
 source config.txt
 export QUALITY KEEP_REC_DAYS CW_RCLONE_DEST KEEP_MINUTES KEEP_CLIP_DAYS MAX_AGE_H DISK_LIMIT
 # small-server tuning (set in config.txt): output size, CPU threads per job
-export CW_RES="${RES:-1080x1920}" CW_THREADS="${THREADS:-0}" CW_LAYOUT="${LAYOUT:-crop}" CW_CTA="${CTA:-Follow for daily stream clips 🔥}" GEMINI_API_KEY="${GEMINI_API_KEY:-}" GEMINI_MODEL="${GEMINI_MODEL:-gemini-flash-latest}" CW_ZOOM="${ZOOM:-1}"
+export CW_RES="${RES:-1080x1920}" CW_THREADS="${THREADS:-0}" CW_LAYOUT="${LAYOUT:-crop}" CW_CTA="${CTA:-Follow for daily stream clips 🔥}" GEMINI_API_KEY="${GEMINI_API_KEY:-}" GEMINI_MODEL="${GEMINI_MODEL:-gemini-flash-latest}" CW_ZOOM="${ZOOM:-1}" CW_HOOK="${HOOK:-1}" MEME_CHANCE="${MEME_CHANCE:-0.6}" MEME_SECONDS="${MEME_SECONDS:-2.2}"
 CHANNELS="${CHANNELS:-$CHANNEL}"
 [ -z "$CHANNELS" ] && { echo "No channel set - run ./configure.sh"; exit 1; }
 UPLOAD="$(UPLOAD="$UPLOAD" ./check_uploads.sh)"; echo "Uploading to: $UPLOAD"

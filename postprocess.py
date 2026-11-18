@@ -148,13 +148,85 @@ Style: Cap,{FONT},128,&H00FFFFFF,&H00FFFFFF,&H00000000,&H64000000,0,0,0,0,100,10
 [Events]
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 """
-    ev = [f"Dialogue: 1,0:00:00.00,9:00:00.00,Hook,,0,0,0,,{{\\fad(150,0)}}{hook_lines}"]
+    ev = []
+    if os.environ.get("CW_HOOK", "1") == "1":   # HOOK=0 in config.txt -> no text at the top
+        ev.append(f"Dialogue: 1,0:00:00.00,9:00:00.00,Hook,,0,0,0,,{{\\fad(150,0)}}{hook_lines}")
     for i, (st, en, text) in enumerate(chunks):
         colour = "&H0000F0FF&" if i % 2 else "&H00FFFFFF&"  # yellow / white
         pop = "{\\fscx70\\fscy70\\t(0,90,\\fscx108\\fscy108)\\t(90,160,\\fscx100\\fscy100)\\c" + colour + "}"
         ev.append(f"Dialogue: 0,{ass_time(st)},{ass_time(max(en, st + 0.25))},Cap,,0,0,0,,{pop}{text}")
     with open(path, "w", encoding="utf-8") as f:
         f.write(head + "\n".join(ev) + "\n")
+
+
+MEME_DIR = os.path.join(HERE, "memes")
+MEME_EXT = (".mp4", ".mov", ".webm", ".mkv", ".gif")
+
+
+def list_memes():
+    try:
+        return sorted(f for f in os.listdir(MEME_DIR) if f.lower().endswith(MEME_EXT))
+    except OSError:
+        return []
+
+
+def pick_meme(transcript, meta):
+    """Choose a meme from memes/ that fits the moment (Gemini if available, else keywords),
+    or None. File names describe the meme, e.g. 'shocked-scream.mp4'."""
+    memes = list_memes()
+    if not memes or random.random() > float(os.environ.get("MEME_CHANCE", "0.6")):
+        return None
+    key = os.environ.get("GEMINI_API_KEY")
+    if key:
+        try:
+            import json
+            import requests
+            prompt = ("Pick the reaction meme that fits this live-stream clip best, or NONE if none fits.\n"
+                      f"Streamer: {meta.get('creator')}. Game: {meta.get('game')}.\n"
+                      f"Transcript: \"{transcript[:1200]}\"\n"
+                      f"Memes (file names describe them): {memes}\n"
+                      'Reply as JSON: {"meme": "<exact file name or NONE>"}')
+            r = requests.post(
+                f"https://generativelanguage.googleapis.com/v1beta/models/"
+                f"{os.environ.get('GEMINI_MODEL', 'gemini-flash-latest')}:generateContent",
+                headers={"x-goog-api-key": key, "Content-Type": "application/json"},
+                json={"contents": [{"parts": [{"text": prompt}]}],
+                      "generationConfig": {"responseMimeType": "application/json"}}, timeout=30)
+            r.raise_for_status()
+            choice = json.loads(r.json()["candidates"][0]["content"]["parts"][0]["text"]).get("meme")
+            return choice if choice in memes else None
+        except Exception as e:
+            log(f"AI meme pick skipped: {e}")
+    words = set(re.findall(r"[a-z]+", transcript.lower()))
+    scored = [(len(words & set(re.findall(r"[a-z]+", m.lower()))), m) for m in memes]
+    best = max(scored)
+    return best[1] if best[0] > 0 else random.choice(memes)
+
+
+def insert_meme(video, meme, at, out, w, h):
+    """Cut to the meme for up to MEME_SECONDS at `at` seconds, then back to the clip."""
+    secs = float(os.environ.get("MEME_SECONDS", "2.2"))
+    mpath = os.path.join(MEME_DIR, meme)
+    has_audio = subprocess.run(["ffprobe", "-v", "error", "-select_streams", "a", "-show_entries",
+                                "stream=index", "-of", "csv=p=0", mpath],
+                               capture_output=True, text=True).stdout.strip() != ""
+    norm = (f"scale={w}:{h}:force_original_aspect_ratio=increase,crop={w}:{h},fps=30,setsar=1,format=yuv420p")
+    fc = (f"[0:v]trim=0:{at},setpts=PTS-STARTPTS,fps=30,format=yuv420p[v1];"
+          f"[0:a]atrim=0:{at},asetpts=PTS-STARTPTS,aresample=44100[a1];"
+          f"[1:v]trim=0:{secs},setpts=PTS-STARTPTS,{norm}[mv];"
+          + (f"[1:a]atrim=0:{secs},asetpts=PTS-STARTPTS,aresample=44100,aformat=channel_layouts=stereo[ma];"
+             if has_audio else f"anullsrc=r=44100:cl=stereo,atrim=0:{secs}[ma];")
+          + f"[0:v]trim=start={at},setpts=PTS-STARTPTS,fps=30,format=yuv420p[v2];"
+          f"[0:a]atrim=start={at},asetpts=PTS-STARTPTS,aresample=44100[a2];"
+          f"[a1]aformat=channel_layouts=stereo[a1s];[a2]aformat=channel_layouts=stereo[a2s];"
+          f"[v1][a1s][mv][ma][v2][a2s]concat=n=3:v=1:a=1[v][a]")
+    cmd = ["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-i", video,
+           "-stream_loop", "-1" if meme.lower().endswith(".gif") else "0", "-i", mpath,
+           "-filter_complex", fc, "-map", "[v]", "-map", "[a]",
+           "-c:v", "libx264", "-preset", "veryfast", "-crf", "19",
+           "-threads", os.environ.get("CW_THREADS", "0"),
+           "-c:a", "aac", "-b:a", "160k", "-movflags", "+faststart", out]
+    return subprocess.run(cmd).returncode == 0
 
 
 def burn(raw, srt, hook, out, has_captions=True, chunks=None, spike_at=None):
@@ -269,6 +341,17 @@ def process(raw, name, o):
                 spike_at=o.get("spike_at")):
         log(f"caption burn failed for {name}; keeping raw clip only")
         return
+    meme = pick_meme((result.get("text") or ""), o.get("meta") or {})
+    if meme and o.get("spike_at") is not None:
+        w, h = os.environ.get("CW_RES", "1080x1920").split("x")
+        tmp = final + ".meme.mp4"
+        if insert_meme(final, meme, o["spike_at"] + 0.4, tmp, w, h):
+            os.replace(tmp, final)
+            log(f"meme cutaway: {meme}")
+        else:
+            log(f"meme insert failed ({meme}) - posting without it")
+            if os.path.exists(tmp):
+                os.remove(tmp)
     try:
         os.remove(raw)   # the finished clip replaces the raw cut - saves ~15-20 MB per clip
     except OSError:

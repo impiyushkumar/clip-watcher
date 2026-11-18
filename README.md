@@ -90,6 +90,9 @@ Streams are saved as 10-second pieces, and only the last `KEEP_MINUTES` (default
 - **Hook:** big **Anton** text at the top with a thick outline and no box. Anton is bundled in `fonts/` (SIL Open Font License); change it with `CW_FONT`.
 - **Captions:** 1–3 words at a time that pop in, alternating white and yellow.
 - **Zoom punch:** a quick zoom on the hype moment. Turn it off with `ZOOM=0`.
+- **Top hook text:** `HOOK=0` turns it off (captions only).
+- **Meme cutaways:** put short reaction memes in `memes/` (see `memes/README.md`). About 60% of clips (`MEME_CHANCE`) cut to a fitting meme for ~2 s (`MEME_SECONDS`) right after the hype moment. Gemini picks the meme by its file name, or transcript keywords do if there's no key.
+- **Re-render old clips** in the current style: `sudo systemctl stop clip-watcher && .venv/bin/python rerender.py && sudo systemctl start clip-watcher`
 - **AI hooks (optional):** add `GEMINI_API_KEY='...'` to `config.txt` and Gemini writes a meme-style hook from what was said. It falls back to the transcript hook if the key is missing or the call fails. Keep the key only on your server; never commit it.
 
 ## Scheduled posting (per platform)
