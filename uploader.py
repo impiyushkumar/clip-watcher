@@ -61,6 +61,9 @@ def upload(path, title, description, tags, privacy="public"):
 
 def update_stats(scoreboard=os.path.join(HERE, "clips", "scoreboard.csv")):
     rows = list(csv.DictReader(open(scoreboard, encoding="utf-8")))
+    if not rows:
+        print("no posts in scoreboard yet")
+        return
     ids = {r["youtube_url"].rsplit("/", 1)[-1]: r for r in rows if r.get("youtube_url")}
     yt = service()
     keys = list(ids)

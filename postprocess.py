@@ -63,7 +63,7 @@ def make_hook(result, fallback):
     return (hook + ("..." if len(words) > n else "")).upper()
 
 
-def burn(raw, srt, hook, out):
+def burn(raw, srt, hook, out, has_captions=True):
     d = os.path.dirname(os.path.abspath(out))
     hook_file = os.path.join(d, ".hook.txt")
     with open(hook_file, "w", encoding="utf-8") as f:
@@ -71,8 +71,8 @@ def burn(raw, srt, hook, out):
     style = ("Fontname=DejaVu Sans,Bold=1,FontSize=13,PrimaryColour=&H00FFFFFF,"
              "OutlineColour=&H00000000,BorderStyle=1,Outline=2.5,Shadow=0,"
              "Alignment=2,MarginV=70")
-    vf = (f"subtitles={os.path.basename(srt)}:force_style='{style}',"
-          f"drawtext=textfile=.hook.txt:font='Sans':fontsize=68:fontcolor=white:"
+    subs = f"subtitles={os.path.basename(srt)}:force_style='{style}'," if has_captions else ""
+    vf = (subs + f"drawtext=textfile=.hook.txt:font='Sans':fontsize=68:fontcolor=white:"
           f"line_spacing=12:box=1:boxcolor=black@0.65:boxborderw=24:"
           f"x=(w-text_w)/2:y=230")
     cmd = ["ffmpeg", "-hide_banner", "-loglevel", "error", "-y",
@@ -107,7 +107,7 @@ def process(raw, name, o):
     n = write_short_srt(result, srt)
     hook = make_hook(result, o["hook_fallback"])
     final = os.path.join(o["ready_dir"], name + ".mp4")
-    if not burn(raw, srt, hook, final):
+    if not burn(raw, srt, hook, final, has_captions=n > 0):
         log(f"caption burn failed for {name}; keeping raw clip only")
         return
     cap = caption_text(hook, o["source_url"], o["tags"])

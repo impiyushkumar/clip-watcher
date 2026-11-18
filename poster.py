@@ -71,4 +71,4 @@ while True:
             postprocess.log("queue is empty")
     if a.once:
         break
-    time.sleep(300)
+    time.sleep(int(os.environ.get("CW_POLL", 300)))

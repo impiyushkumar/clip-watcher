@@ -17,7 +17,7 @@ if echo ",$UPLOAD," | grep -Eq ",(instagram|facebook)," && [ ! -f meta.json ]; t
   echo "Instagram/Facebook upload needs a one-time Meta setup (README)."
   read -rp "Run it now? (y/n) [n]: " M; [ "$M" = "y" ] && python3 meta_uploader.py --setup
 fi
-UPLOAD="$(./check_uploads.sh)"
+UPLOAD="$(UPLOAD="$UPLOAD" ./check_uploads.sh)"
 echo "Uploading to: $UPLOAD"
 
 if [ "${AUTO_LEARN:-1}" = "1" ]; then
