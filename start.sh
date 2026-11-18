@@ -6,20 +6,8 @@ source .venv/bin/activate
 
 CFG=config.txt
 [ -f "$CFG" ] && source "$CFG"
-if [ -z "${CHANNEL:-}" ]; then
-  echo "=== clip-watcher first-time setup (saved to config.txt, edit it any time) ==="
-  read -rp "Channel (xqc, youtube:@handle, kick:name): " CHANNEL
-  read -rp "Min chat messages per 10s for a spike [10]: " MIN
-  read -rp "Clip length in seconds [30]: " LENGTH
-  read -rp "Hashtags [#gaming #shorts #twitch]: " TAGS
-  read -rp "Auto-upload every clip to YouTube Shorts? (y/n) [n]: " YT
-  UPLOAD=none; [ "${YT:-n}" = "y" ] && UPLOAD=youtube
-  {
-    echo "CHANNEL='$CHANNEL'"; echo "MIN=${MIN:-10}"; echo "LENGTH=${LENGTH:-30}"
-    echo "TAGS='${TAGS:-#gaming #shorts #twitch}'"; echo "UPLOAD=$UPLOAD"
-    echo "PRIVACY=public"; echo "MODEL=base"
-  } > "$CFG"
-fi
+if [ -z "${CHANNEL:-}" ]; then ./configure.sh; source "$CFG"; fi
+export QUALITY KEEP_REC_DAYS CW_RCLONE_DEST
 
 if [ "${UPLOAD:-none}" = "youtube" ] && [ ! -f token.json ]; then
   if [ ! -f client_secret.json ]; then

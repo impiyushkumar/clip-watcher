@@ -15,6 +15,10 @@ fi
 python3 -m venv .venv
 source .venv/bin/activate
 pip install --upgrade pip
+if ! command -v nvidia-smi >/dev/null && [ "$(uname)" = "Linux" ]; then
+  echo "No NVIDIA GPU found - installing the small CPU-only PyTorch (~1.5 GB instead of ~6 GB)"
+  pip install torch --index-url https://download.pytorch.org/whl/cpu
+fi
 pip install streamlink openai-whisper chat-downloader websocket-client curl_cffi google-api-python-client google-auth-oauthlib
-chmod +x watch.sh start.sh install.sh
+chmod +x *.sh
 echo "Done. Double-click start.sh / start.command, or run ./watch.sh <channel>"

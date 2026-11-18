@@ -60,3 +60,30 @@ This fills views, likes and comments into `clips/scoreboard.csv` and prints your
 Ctrl+C stops everything. Set `CW_DEBUG=1` to print every bucket's count.
 
 Note: chat usually runs a few seconds behind the video, so the 20 s pre-roll covers the moment people are reacting to.
+
+## Run 24/7 on a server (Google Cloud / any Ubuntu VPS)
+1. Create the VM: in [Cloud Shell](https://shell.cloud.google.com) run
+   ```bash
+   gcloud compute instances create clip-watcher --zone=us-central1-a --machine-type=e2-standard-2 --image-family=ubuntu-2404-lts-amd64 --image-project=ubuntu-os-cloud --boot-disk-size=50GB --boot-disk-type=pd-balanced
+   ```
+2. SSH in with `gcloud compute ssh clip-watcher --zone=us-central1-a`, then:
+   ```bash
+   git clone https://github.com/impiyushkumar/clip-watcher && cd clip-watcher && ./setup-gcp.sh
+   ```
+   This installs everything (a CPU-only build, about 1.5 GB), asks the setup questions and installs a **systemd service**. The service starts on boot, waits for the stream, records, clips and uploads, and gets ready for the next stream when one ends.
+3. YouTube upload on a server: copy `client_secret.json` to the VM (`gcloud compute scp client_secret.json clip-watcher:~/clip-watcher/ --zone=us-central1-a`), then connect with a tunnel and log in:
+   ```bash
+   gcloud compute ssh clip-watcher --zone=us-central1-a -- -L 8765:localhost:8765
+   cd clip-watcher && .venv/bin/python uploader.py --login && sudo systemctl restart clip-watcher
+   ```
+   Open the printed link in your PC's browser.
+4. Clips on your phone (optional): run `rclone config` to add Google Drive as `gdrive`, set `CW_RCLONE_DEST='gdrive:clip-watcher'` in `config.txt`, then `sudo systemctl restart clip-watcher`.
+
+| Task | Command |
+|---|---|
+| Live log | `journalctl -u clip-watcher -f` |
+| Change settings | `./configure.sh && sudo systemctl restart clip-watcher` |
+| Stop / start | `sudo systemctl stop clip-watcher` / `start` |
+| Download clips | `gcloud compute scp --recurse clip-watcher:~/clip-watcher/clips/ready . --zone=us-central1-a` |
+
+Recordings older than 1 day are deleted automatically (`KEEP_REC_DAYS`). Note: YouTube often blocks *recording/chat* from cloud IPs, so on a server use Twitch or Kick channels. Uploading to YouTube works everywhere.

@@ -31,7 +31,12 @@ def service(interactive=False):
         if not os.path.exists(SECRET):
             raise RuntimeError(f"missing {SECRET} - see README 'YouTube auto-upload'")
         from google_auth_oauthlib.flow import InstalledAppFlow
-        creds = InstalledAppFlow.from_client_secrets_file(SECRET, SCOPES).run_local_server(port=0)
+        headless = sys.platform.startswith("linux") and not os.environ.get("DISPLAY")
+        if headless:
+            print("Server mode: on your PC run  gcloud compute ssh <vm> -- -L 8765:localhost:8765")
+            print("then open the link below in your PC's browser.")
+        creds = InstalledAppFlow.from_client_secrets_file(SECRET, SCOPES).run_local_server(
+            port=8765, open_browser=not headless)
     with open(TOKEN, "w") as f:
         f.write(creds.to_json())
     return build("youtube", "v3", credentials=creds, cache_discovery=False)

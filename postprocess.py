@@ -109,6 +109,12 @@ def process(raw, name, o):
         f.write(cap)
     log(f"READY: {final}  (hook: {hook!r}, {n} caption lines)")
 
+    dest = os.environ.get("CW_RCLONE_DEST")  # e.g. gdrive:clip-watcher
+    if dest:
+        for ext in (".mp4", ".txt"):
+            subprocess.run(["rclone", "copy", os.path.join(o["ready_dir"], name + ext), dest])
+        log(f"synced to {dest}")
+
     url = ""
     if o["upload"] == "youtube":
         try:
