@@ -7,6 +7,8 @@ cd "$(dirname "$0")"
 source .venv/bin/activate
 source config.txt
 export QUALITY KEEP_REC_DAYS CW_RCLONE_DEST
+# small-server tuning (set in config.txt): output size, CPU threads per job
+export CW_RES="${RES:-1080x1920}" CW_THREADS="${THREADS:-0}"
 CHANNELS="${CHANNELS:-$CHANNEL}"
 [ -z "$CHANNELS" ] && { echo "No channel set - run ./configure.sh"; exit 1; }
 UPLOAD="$(UPLOAD="$UPLOAD" ./check_uploads.sh)"; echo "Uploading to: $UPLOAD"
@@ -30,7 +32,7 @@ for CH in $(echo "$CHANNELS" | tr ',' ' '); do
   ( while true; do
       L="${LENGTH:-30}"
       [ "${AUTO_LEARN:-1}" = "1" ] && L="$(python3 learn.py --pick-length "$L" 2>/dev/null || echo "$L")"
-      ./watch.sh "$CH" --min "${MIN:-10}" --length "$L" --model "${MODEL:-base}" \
+      ./watch.sh "$CH" --min "${MIN:-10}" --factor "${FACTOR:-2.5}" --cooldown "${COOLDOWN:-0}" --length "$L" --model "${MODEL:-base}" \
         --tags "${TAGS:-#gaming #shorts}" --privacy "${PRIVACY:-public}" "${QARGS[@]}" < /dev/null 2>&1 \
         | sed -u "s|^|[$CH] |"
       echo "[$CH] $(date '+%H:%M') stream ended or offline - checking again in 30s"; sleep 30

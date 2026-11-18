@@ -66,6 +66,16 @@ CHANNELS='kaicenat,ohnepixel,kick:n3on'
 ```
 Each channel is watched in parallel: it waits for that streamer to go live, clips their hype moments, and starts waiting again when the stream ends. All clips go into one queue, and the scheduler posts the best ones. A 2-CPU server handles about **3 channels** comfortably. Restart after changing: `sudo systemctl restart clip-watcher`.
 
+**Small server (2 CPUs) with several live channels:** add these to `config.txt` to keep it fast:
+```
+MODEL=tiny        # ~3x faster captions
+RES=720x1280      # 720p sources don't need 1080p output
+THREADS=1         # one CPU thread per job
+FACTOR=3          # only bigger spikes
+COOLDOWN=300      # at most one clip per channel every 5 min
+```
+Heavy jobs (cutting and captions) also run one at a time across all channels, so the server never chokes.
+
 ## Scheduled posting (per platform)
 Set how many posts a day each platform gets in `config.txt`:
 ```

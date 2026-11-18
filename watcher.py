@@ -44,6 +44,26 @@ def pending(delta):
         PENDING[0] += delta
 
 
+import contextlib
+import fcntl
+
+
+@contextlib.contextmanager
+def heavy_slot():
+    """Only one CPU-heavy job (cut / captions) at a time across ALL channels."""
+    os.makedirs("clips", exist_ok=True)
+    with open("clips/.heavy.lock", "w") as f:
+        fcntl.flock(f, fcntl.LOCK_EX)
+        try:
+            yield
+        finally:
+            fcntl.flock(f, fcntl.LOCK_UN)
+
+
+RES = os.environ.get("CW_RES", "1080x1920")      # output size, e.g. 720x1280 on small servers
+THREADS = os.environ.get("CW_THREADS", "0")       # ffmpeg threads (0 = auto)
+
+
 def cut_clip(rec, t0, spike_t, name, raw_dir, job_q, score=0):
     # wait until the POST seconds (+ a margin) exist in the recording
     time.sleep(max(0, spike_t + POST + 8 - time.time()))
@@ -52,11 +72,12 @@ def cut_clip(rec, t0, spike_t, name, raw_dir, job_q, score=0):
     cmd = [
         "ffmpeg", "-hide_banner", "-loglevel", "error", "-y",
         "-ss", f"{start:.2f}", "-i", rec, "-t", str(PRE + POST),
-        "-vf", "crop='trunc(ih*9/16/2)*2':ih,scale=1080:1920,setsar=1",
-        "-c:v", "libx264", "-preset", "veryfast", "-crf", "20",
+        "-vf", f"crop='trunc(ih*9/16/2)*2':ih,scale={RES.replace('x', ':')},setsar=1",
+        "-c:v", "libx264", "-preset", "veryfast", "-crf", "20", "-threads", THREADS,
         "-c:a", "aac", "-b:a", "160k", "-movflags", "+faststart", out,
     ]
-    r = subprocess.run(cmd)
+    with heavy_slot():
+        r = subprocess.run(cmd)
     if r.returncode == 0 and os.path.exists(out):
         log(f"raw clip saved: {out}")
         job_q.put((out, name, score))
@@ -71,7 +92,8 @@ def post_worker(q, opts):
     while True:
         raw, name, score = q.get()
         try:
-            postprocess.process(raw, name, dict(opts, score=score))
+            with heavy_slot():
+                postprocess.process(raw, name, dict(opts, score=score))
         except Exception as e:
             log(f"post-processing failed for {name}: {e}")
         finally:
@@ -180,6 +202,7 @@ def main():
     ap.add_argument("--upload", default="none", help="none, or any of youtube,instagram,facebook (comma separated)")
     ap.add_argument("--privacy", default="public", choices=["public", "unlisted", "private"])
     ap.add_argument("--tags", default="#gaming #shorts #twitch")
+    ap.add_argument("--cooldown", type=int, default=0, help="min seconds between clips per channel")
     ap.add_argument("--hook", default="wait for it...", help="hook text when nobody talks")
     ap.add_argument("--source-url", default="")
     ap.add_argument("--queue", default="", help="queue folder: don't post now, let poster.py post on a schedule")
@@ -230,7 +253,7 @@ def main():
             if len(history) >= 6:  # need ~1 min of baseline first
                 med = statistics.median(history)
                 thr = max(a.min, a.factor * med)
-                if count >= thr and end - last_clip >= PRE + POST:
+                if count >= thr and end - last_clip >= max(PRE + POST, a.cooldown):
                     last_clip = end
                     log(f"SPIKE {count} msgs (median {med:.1f})")
                     make_clip(end, score=count)

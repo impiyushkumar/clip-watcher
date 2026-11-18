@@ -21,6 +21,10 @@ def transcribe(path, model_name):
     import whisper
     if _model is None:
         log(f"loading whisper model '{model_name}' (first time only)...")
+        import torch
+        n = int(os.environ.get("CW_THREADS", "0") or 0)
+        if n > 0:
+            torch.set_num_threads(n)
         _model = whisper.load_model(model_name)
     return _model.transcribe(path, word_timestamps=True, fp16=False, verbose=None)
 
@@ -78,6 +82,7 @@ def burn(raw, srt, hook, out, has_captions=True):
     cmd = ["ffmpeg", "-hide_banner", "-loglevel", "error", "-y",
            "-i", os.path.abspath(raw), "-vf", vf,
            "-c:v", "libx264", "-preset", "veryfast", "-crf", "20",
+           "-threads", os.environ.get("CW_THREADS", "0"),
            "-c:a", "copy", "-movflags", "+faststart", os.path.basename(out)]
     ok = subprocess.run(cmd, cwd=d).returncode == 0
     os.remove(hook_file)
