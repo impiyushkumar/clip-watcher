@@ -69,38 +69,58 @@ def write_short_srt(result, path, max_words=3, max_chars=18):
     return len(chunks)
 
 
-def ai_hook(transcript, meta):
-    """Meme-style hook from Gemini (optional: set GEMINI_API_KEY in config.txt).
-    Returns None on any problem so the normal transcript hook is used."""
+def gemini_json(prompt, temperature=0.9):
+    """Call Gemini and return parsed JSON, or None. Retries busy errors (429/5xx) and
+    falls back to backup models, because a busy model is common at peak times."""
     key = os.environ.get("GEMINI_API_KEY")
     if not key:
         return None
-    try:
-        import json
-        import requests
-        model = os.environ.get("GEMINI_MODEL", "gemini-flash-latest")
-        prompt = (
-            "You write on-screen hooks for viral short-form clips of live streamers.\n"
-            f"Streamer: {meta.get('creator') or 'unknown'}. Game/category: {meta.get('game') or 'unknown'}.\n"
-            f"What was said in the 30-second clip (auto transcript, may have errors):\n\"{transcript[:1500]}\"\n\n"
-            "Write ONE hook of 3-8 words in meme / Gen-Z clip-page style (e.g. 'HE REALLY THOUGHT HE HAD IT', "
-            "'CHAT WAS NOT READY FOR THIS'). Only use what the transcript supports - no made-up events, "
-            "no slurs, no claims about real people beyond the clip. No emojis, no hashtags, no quotes. "
-            'Reply as JSON: {"hook": "..."}')
-        r = requests.post(
-            f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent",
-            headers={"x-goog-api-key": key, "Content-Type": "application/json"},
-            json={"contents": [{"parts": [{"text": prompt}]}],
-                  "generationConfig": {"responseMimeType": "application/json", "temperature": 0.9}},
-            timeout=30)
-        r.raise_for_status()
-        text = r.json()["candidates"][0]["content"]["parts"][0]["text"]
-        hook = json.loads(text).get("hook", "").strip()
-        hook = re.sub(r"[^A-Za-z0-9 '?!.,&-]", "", hook).upper()
-        return hook if 2 <= len(hook.split()) <= 10 else None
-    except Exception as e:
-        log(f"AI hook skipped: {e}")
+    import json
+    import requests
+    models = [os.environ.get("GEMINI_MODEL", "gemini-flash-latest"),
+              "gemini-2.5-flash", "gemini-2.5-flash-lite"]
+    last = ""
+    for model in dict.fromkeys(models):          # unique, in order
+        for attempt in range(3):
+            try:
+                r = requests.post(
+                    f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent",
+                    headers={"x-goog-api-key": key, "Content-Type": "application/json"},
+                    json={"contents": [{"parts": [{"text": prompt}]}],
+                          "generationConfig": {"responseMimeType": "application/json",
+                                               "temperature": temperature}},
+                    timeout=30)
+                if r.status_code in (429, 500, 502, 503, 504):
+                    last = f"{model}: {r.status_code}"
+                    time.sleep(2 * (attempt + 1))
+                    continue
+                if r.status_code == 404:          # model name not available -> next model
+                    last = f"{model}: not found"
+                    break
+                r.raise_for_status()
+                return json.loads(r.json()["candidates"][0]["content"]["parts"][0]["text"])
+            except Exception as e:
+                last = f"{model}: {e}"
+                time.sleep(2)
+    log(f"Gemini unavailable ({last}) - using the normal hook")
+    return None
+
+
+def ai_hook(transcript, meta):
+    """Meme-style hook from Gemini (optional: GEMINI_API_KEY in config.txt), else None."""
+    if not os.environ.get("GEMINI_API_KEY") or not transcript:
         return None
+    prompt = (
+        "You write on-screen hooks for viral short-form clips of live streamers.\n"
+        f"Streamer: {meta.get('creator') or 'unknown'}. Game/category: {meta.get('game') or 'unknown'}.\n"
+        f"What was said in the 30-second clip (auto transcript, may have errors):\n\"{transcript[:1500]}\"\n\n"
+        "Write ONE hook of 3-8 words in meme / Gen-Z clip-page style (e.g. 'HE REALLY THOUGHT HE HAD IT', "
+        "'CHAT WAS NOT READY FOR THIS'). Only use what the transcript supports - no made-up events, "
+        "no slurs, no claims about real people beyond the clip. No emojis, no hashtags, no quotes. "
+        'Reply as JSON: {"hook": "..."}')
+    out = gemini_json(prompt) or {}
+    hook = re.sub(r"[^A-Za-z0-9 '?!.,&-]", "", str(out.get("hook", "")).strip()).upper()
+    return hook if 2 <= len(hook.split()) <= 10 else None
 
 
 def make_hook(result, fallback, meta=None):
@@ -176,27 +196,16 @@ def pick_meme(transcript, meta):
     memes = list_memes()
     if not memes or random.random() > float(os.environ.get("MEME_CHANCE", "0.6")):
         return None
-    key = os.environ.get("GEMINI_API_KEY")
-    if key:
-        try:
-            import json
-            import requests
-            prompt = ("Pick the reaction meme that fits this live-stream clip best, or NONE if none fits.\n"
-                      f"Streamer: {meta.get('creator')}. Game: {meta.get('game')}.\n"
-                      f"Transcript: \"{transcript[:1200]}\"\n"
-                      f"Memes (file names describe them): {memes}\n"
-                      'Reply as JSON: {"meme": "<exact file name or NONE>"}')
-            r = requests.post(
-                f"https://generativelanguage.googleapis.com/v1beta/models/"
-                f"{os.environ.get('GEMINI_MODEL', 'gemini-flash-latest')}:generateContent",
-                headers={"x-goog-api-key": key, "Content-Type": "application/json"},
-                json={"contents": [{"parts": [{"text": prompt}]}],
-                      "generationConfig": {"responseMimeType": "application/json"}}, timeout=30)
-            r.raise_for_status()
-            choice = json.loads(r.json()["candidates"][0]["content"]["parts"][0]["text"]).get("meme")
+    if os.environ.get("GEMINI_API_KEY"):
+        prompt = ("Pick the reaction meme that fits this live-stream clip best, or NONE if none fits.\n"
+                  f"Streamer: {meta.get('creator')}. Game: {meta.get('game')}.\n"
+                  f"Transcript: \"{transcript[:1200]}\"\n"
+                  f"Memes (file names describe them): {memes}\n"
+                  'Reply as JSON: {"meme": "<exact file name or NONE>"}')
+        out = gemini_json(prompt, temperature=0.4)
+        if out is not None:
+            choice = out.get("meme")
             return choice if choice in memes else None
-        except Exception as e:
-            log(f"AI meme pick skipped: {e}")
     words = set(re.findall(r"[a-z]+", transcript.lower()))
     scored = [(len(words & set(re.findall(r"[a-z]+", m.lower()))), m) for m in memes]
     best = max(scored)
