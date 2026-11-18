@@ -83,7 +83,7 @@ LAYOUT=fit        # whole 16:9 picture sharp in the middle + blurred background 
 Heavy jobs (cutting and captions) also run one at a time across all channels, so the server never chokes.
 
 ## Disk use (rolling buffer)
-Streams are saved as 10-second pieces, and only the last `KEEP_MINUTES` (default 10) are kept per channel. A 1080p channel therefore uses about 0.5 GB of disk at any time instead of 3–4 GB per hour. Finished clips are kept in `clips/ready/`.
+Streams are saved as 10-second pieces, and only the last `KEEP_MINUTES` (default 10) are kept per channel. A 1080p channel therefore uses about 0.5 GB of disk at any time instead of 3–4 GB per hour. Raw cuts are deleted as soon as the finished clip is made. Finished clips are deleted once they've been posted to every platform and are older than `KEEP_CLIP_DAYS` (default 2), so total disk use stays roughly flat. `clips/scoreboard.csv` keeps every post link.
 
 ## Clip style
 - **Format:** full-screen 9:16 at 1080×1920 (`LAYOUT=crop`, `RES=1080x1920`, `QUALITY='best'`).

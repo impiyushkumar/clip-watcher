@@ -269,6 +269,10 @@ def process(raw, name, o):
                 spike_at=o.get("spike_at")):
         log(f"caption burn failed for {name}; keeping raw clip only")
         return
+    try:
+        os.remove(raw)   # the finished clip replaces the raw cut - saves ~15-20 MB per clip
+    except OSError:
+        pass
     meta = o.get("meta") or {}
     cap = caption_text(hook, o["source_url"], o["tags"], meta)
     with open(os.path.join(o["ready_dir"], name + ".txt"), "w", encoding="utf-8") as f:

@@ -87,8 +87,40 @@ if a.once:
         post_to(t) or postprocess.log(f"[{t}] nothing new to post")
     raise SystemExit
 
+def cleanup():
+    """Keep disk flat: delete finished clips once posted everywhere (or expired) and
+    older than KEEP_CLIP_DAYS (default 2), plus leftovers. scoreboard.csv keeps the links."""
+    keep = float(os.environ.get("KEEP_CLIP_DAYS", "2")) * 86400
+    now = time.time()
+    freed = 0
+    for d in (posted_dir, old_dir):
+        for j in glob.glob(os.path.join(d, "*.json")):
+            if now - os.path.getmtime(j) < keep:
+                continue
+            try:
+                it = json.load(open(j, encoding="utf-8"))
+                base = os.path.splitext(it["final"])[0]
+                for ext in (".mp4", ".srt", ".txt"):
+                    if os.path.exists(base + ext):
+                        freed += os.path.getsize(base + ext)
+                        os.remove(base + ext)
+                os.remove(j)
+            except (OSError, ValueError, KeyError):
+                pass
+    for f in glob.glob("clips/raw/*.mp4"):   # raw cuts left behind by a crash
+        if now - os.path.getmtime(f) > 86400:
+            freed += os.path.getsize(f)
+            os.remove(f)
+    if freed:
+        postprocess.log(f"cleanup: freed {freed / 1e9:.2f} GB")
+
+
 last_learn = 0
+last_clean = 0
 while True:
+    if time.time() - last_clean > 3600:
+        cleanup()
+        last_clean = time.time()
     if time.time() - last_learn > 12 * 3600:   # relearn twice a day
         try:
             auto = learn.refresh_and_learn()
