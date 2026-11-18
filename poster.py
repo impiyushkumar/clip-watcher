@@ -12,6 +12,7 @@ import os
 import shutil
 import time
 
+import learn
 import postprocess
 
 ap = argparse.ArgumentParser()
@@ -44,9 +45,22 @@ def next_item():
 
 postprocess.log(f"poster: 1 clip every {a.every}h to {a.upload} "
                 f"({len(glob.glob(os.path.join(a.queue, '*.json')))} queued)")
+last_learn = 0
 while True:
+    if not a.once and time.time() - last_learn > 12 * 3600:   # relearn twice a day
+        try:
+            auto = learn.refresh_and_learn()
+            postprocess.log(f"learned: length {auto.get('length', '-')}s, "
+                            f"best hours {auto.get('best_hours') or 'any'}")
+        except Exception as e:
+            postprocess.log(f"learning skipped: {e}")
+        last_learn = time.time()
     last = os.path.getmtime(stamp) if os.path.exists(stamp) else 0
-    if a.once or time.time() - last >= a.every * 3600:
+    since = time.time() - last
+    hours = learn.load_auto().get("best_hours") or []
+    good_hour = not hours or time.localtime().tm_hour in hours
+    # due, and either a good hour or we've already waited one extra interval
+    if a.once or (since >= a.every * 3600 and (good_hour or since >= 2 * a.every * 3600)):
         path, item = next_item()
         if item:
             postprocess.log(f"posting {item['clip']} (score {item['score']}): {item['hook']}")

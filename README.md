@@ -67,6 +67,14 @@ Set `POST_EVERY=4` in `config.txt` (the default from `configure.sh`; `0` posts e
 
 Post the best queued clip right now: `python3 poster.py --once --upload youtube,instagram,facebook`
 
+## Self-learning (automatic)
+With `AUTO_LEARN=1` (the default), clip-watcher improves itself from your own results. No outside service or AI is involved:
+- **Measuring:** twice a day it pulls views for every posted clip (YouTube API) into `clips/scoreboard.csv`.
+- **Judging:** after 8+ posts are at least 24 h old, it compares median views by **clip length**, **posting hour** and **hook style**.
+- **Adjusting:** it switches to the best clip length automatically and posts at your best-performing hours (waiting at most one extra interval for a good hour).
+- **Exploring:** about 1 in 5 streams it tests a different length, so it keeps finding better settings as your audience changes.
+- **Reporting:** you can read what it learned in `clips/learning.md`; the settings it applies are in `clips/auto.json`. Run `python3 learn.py` to relearn now.
+
 ## Earning from clipping
 Many streamers and brands **pay clippers per view** through clipping campaigns, e.g. on Whop's Content Rewards marketplace. Rates are usually around **$1 per 1,000 views** (often $0.20–$5) and are paid only on approved, verified views while the campaign budget lasts. Each campaign has its own rules (which streams, hashtags, tags, length), so set `CHANNEL`, `TAGS` and `LENGTH` in `config.txt` to match the campaign you joined.
 

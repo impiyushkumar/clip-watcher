@@ -7,6 +7,10 @@ while true; do
   source config.txt
   export QUALITY KEEP_REC_DAYS CW_RCLONE_DEST
   UPLOAD="$(./check_uploads.sh)"; echo "Uploading to: $UPLOAD"
+  if [ "${AUTO_LEARN:-1}" = "1" ]; then
+    LENGTH="$(python3 learn.py --pick-length "${LENGTH:-30}" 2>/dev/null || echo "${LENGTH:-30}")"
+    echo "Self-learning on: clip length this stream = ${LENGTH}s"
+  fi
   QARGS=()
   if [ "${POST_EVERY:-0}" != "0" ]; then
     QARGS=(--queue clips/queue --upload none)

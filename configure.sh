@@ -16,7 +16,7 @@ UPLOAD="$(echo "${UPLOAD:-none}" | tr -d ' ' | tr '[:upper:]' '[:lower:]')"
   echo "CHANNEL='$CHANNEL'"; echo "MIN=${MIN:-10}"; echo "LENGTH=${LENGTH:-30}"
   echo "TAGS='${TAGS:-#gaming #shorts #twitch}'"; echo "UPLOAD='$UPLOAD'"
   echo "PRIVACY=public"; echo "MODEL=${MODEL:-base}"; echo "QUALITY='${QUALITY:-best}'"
-  echo "POST_EVERY=${POST_EVERY:-4}"; echo "KEEP_REC_DAYS=1"
+  echo "POST_EVERY=${POST_EVERY:-4}"; echo "KEEP_REC_DAYS=1"; echo "AUTO_LEARN=1"
   echo "# Google Drive sync (after 'rclone config'), e.g. CW_RCLONE_DEST='gdrive:clip-watcher'"
   echo "CW_RCLONE_DEST=''"
 } > config.txt

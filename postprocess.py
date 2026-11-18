@@ -9,7 +9,7 @@ import time
 
 _model = None
 SCORE_COLS = ["clip", "created", "source", "hook", "length_s", "youtube_url",
-              "views", "likes", "comments", "stats_updated", "instagram_url", "facebook_url"]
+              "views", "likes", "comments", "stats_updated", "instagram_url", "facebook_url", "posted"]
 
 
 def log(*a):
@@ -50,11 +50,17 @@ def write_short_srt(result, path, max_words=3, max_chars=18):
 
 
 def make_hook(result, fallback):
+    try:  # learned by learn.py from your own results
+        import json
+        n = int(json.load(open(os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                            "clips", "auto.json"))).get("hook_words", 7))
+    except (OSError, ValueError):
+        n = 7
     words = (result.get("text") or "").strip().split()
     if len(words) < 3:
         return fallback.upper()
-    hook = " ".join(words[:7]).rstrip(",.")
-    return (hook + ("..." if len(words) > 7 else "")).upper()
+    hook = " ".join(words[:n]).rstrip(",.")
+    return (hook + ("..." if len(words) > n else "")).upper()
 
 
 def burn(raw, srt, hook, out):
@@ -155,5 +161,5 @@ def post_item(item, upload, tags, privacy, scoreboard, ready_dir="clips/ready"):
         "clip": item["clip"], "created": item["created"], "source": item["source"],
         "hook": hook, "length_s": item["length_s"],
         "youtube_url": urls.get("youtube", ""), "instagram_url": urls.get("instagram", ""),
-        "facebook_url": urls.get("facebook", "")})
+        "facebook_url": urls.get("facebook", ""), "posted": time.strftime("%Y-%m-%d %H:%M")})
     return urls
