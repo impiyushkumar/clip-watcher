@@ -8,7 +8,7 @@ source .venv/bin/activate
 source config.txt
 export QUALITY KEEP_REC_DAYS CW_RCLONE_DEST
 # small-server tuning (set in config.txt): output size, CPU threads per job
-export CW_RES="${RES:-1080x1920}" CW_THREADS="${THREADS:-0}" CW_LAYOUT="${LAYOUT:-crop}"
+export CW_RES="${RES:-1080x1920}" CW_THREADS="${THREADS:-0}" CW_LAYOUT="${LAYOUT:-crop}" CW_CTA="${CTA:-Follow for daily stream clips 🔥}"
 CHANNELS="${CHANNELS:-$CHANNEL}"
 [ -z "$CHANNELS" ] && { echo "No channel set - run ./configure.sh"; exit 1; }
 UPLOAD="$(UPLOAD="$UPLOAD" ./check_uploads.sh)"; echo "Uploading to: $UPLOAD"

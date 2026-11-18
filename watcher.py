@@ -96,6 +96,22 @@ def cut_clip(rec, t0, spike_t, name, raw_dir, job_q, score=0):
         pending(-1)
 
 
+def stream_meta(url, channel):
+    """Creator name + game from the live stream (used for captions and hashtags)."""
+    meta = {"creator": channel.lstrip("@"), "game": ""}
+    if not url:
+        return meta
+    try:
+        import json
+        out = subprocess.run(["streamlink", "--json", url], capture_output=True, text=True, timeout=40).stdout
+        m = (json.loads(out or "{}").get("metadata") or {})
+        meta["creator"] = m.get("author") or meta["creator"]
+        meta["game"] = m.get("category") or ""
+    except Exception:
+        pass
+    return meta
+
+
 def post_worker(q, opts):
     """One clip at a time: captions + hook + caption text + upload + log."""
     import postprocess
@@ -231,6 +247,8 @@ def main():
             "hook_fallback": a.hook, "length": PRE + POST, "upload": a.upload,
             "privacy": a.privacy, "scoreboard": os.path.join(a.clips, "scoreboard.csv"),
             "queue_dir": a.queue}
+    opts["meta"] = stream_meta(a.source_url, channel)
+    log(f"stream: {opts['meta'].get('creator')} | {opts['meta'].get('game') or '?'}")
     threading.Thread(target=post_worker, args=(wq, opts), daemon=True).start()
     log(f"clips: {PRE}s before + {POST}s after each spike; upload: {a.upload}")
 

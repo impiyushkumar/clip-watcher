@@ -89,8 +89,64 @@ def burn(raw, srt, hook, out, has_captions=True):
     return ok
 
 
-def caption_text(hook, source_url, tags):
-    return f"{hook.capitalize()}\n\n🎥 {source_url}\n\n{tags}\n"
+import random
+import re
+
+GAME_TAGS = {  # extra tags for the game being streamed (from Twitch/Kick/YouTube category)
+    "grand theft auto vi": ["#gta6", "#gtavi", "#gta6gameplay", "#gta6clips", "#vicecity"],
+    "grand theft auto v": ["#gta5", "#gtav", "#gtarp", "#gtaonline"],
+    "just chatting": ["#irl", "#streamer", "#reaction"],
+}
+GENERIC_TAGS = ["#gaming", "#streamer", "#twitchclips", "#clips", "#viral", "#funny",
+                "#fyp", "#gamingclips", "#livestream", "#reels"]
+ALIASES = {  # channel name -> name fans search for
+    "zackrawrr": "Asmongold", "kaicenat": "Kai Cenat", "ohnepixel": "ohnePixel",
+    "theburntpeanut": "TheBurntPeanut", "xqc": "xQc", "jasontheween": "JasonTheWeen",
+    "stableronaldo": "StableRonaldo", "dukedennis": "Duke Dennis", "ishowspeed": "IShowSpeed",
+}
+MAX_TAGS = {"instagram": 5, "facebook": 5, "youtube": 3, "default": 8}
+
+
+def slug(text):
+    return re.sub(r"[^a-z0-9]", "", (text or "").lower())
+
+
+def display_name(meta):
+    c = meta.get("creator") or ""
+    return ALIASES.get(c.lower(), c)
+
+
+def pick_tags(meta, base_tags, platform="default"):
+    """Creator + game tags first, then your TAGS, then a rotating mix (identical tag sets
+    on every post look spammy). Instagram allows 5 hashtags, so it gets the best 5."""
+    creator = slug(display_name(meta))
+    game = (meta.get("game") or "").lower()
+    tags = []
+    tags += GAME_TAGS.get(game, [f"#{slug(game)}"] if slug(game) else [])[:2]
+    if creator:
+        tags += [f"#{creator}", f"#{creator}clips"]
+    tags += [t for t in (base_tags or "").split() if t.startswith("#")]
+    tags += random.sample(GENERIC_TAGS, 4)
+    seen, out = set(), []
+    for t in tags:
+        if t.lower() not in seen:
+            seen.add(t.lower())
+            out.append(t)
+    return out[:MAX_TAGS.get(platform, MAX_TAGS["default"])]
+
+
+def caption_text(hook, source_url, tags, meta=None, platform="default"):
+    meta = meta or {}
+    who = display_name(meta)
+    game = meta.get("game") or ""
+    lines = [hook.capitalize() + (" 😳" if not hook.endswith("?") else " 👀")]
+    if who:
+        lines.append(f"🎮 {who}" + (f" playing {game}" if game and game.lower() != "just chatting" else ""))
+    lines.append(f"🎥 Credit: {source_url}")
+    cta = os.environ.get("CW_CTA", "Follow for daily stream clips 🔥")
+    if cta:
+        lines.append(cta)
+    return "\n".join(lines) + "\n\n" + " ".join(pick_tags(meta, tags, platform)) + "\n"
 
 
 def append_score(path, row):
@@ -122,7 +178,8 @@ def process(raw, name, o):
     if not burn(raw, srt, hook, final, has_captions=n > 0):
         log(f"caption burn failed for {name}; keeping raw clip only")
         return
-    cap = caption_text(hook, o["source_url"], o["tags"])
+    meta = o.get("meta") or {}
+    cap = caption_text(hook, o["source_url"], o["tags"], meta)
     with open(os.path.join(o["ready_dir"], name + ".txt"), "w", encoding="utf-8") as f:
         f.write(cap)
     log(f"READY: {final}  (hook: {hook!r}, {n} caption lines)")
@@ -135,7 +192,8 @@ def process(raw, name, o):
 
     item = {"clip": name, "final": final, "caption": cap, "hook": hook,
             "score": o.get("score", 0), "created": time.strftime("%Y-%m-%d %H:%M"),
-            "created_ts": time.time(), "source": o["source_url"], "length_s": o["length"]}
+            "created_ts": time.time(), "source": o["source_url"], "length_s": o["length"],
+            "meta": meta}
     if o.get("queue_dir"):  # scheduled mode: poster.py posts the best clip every N hours
         import json
         os.makedirs(o["queue_dir"], exist_ok=True)
@@ -148,15 +206,18 @@ def process(raw, name, o):
 
 def post_item(item, upload, tags, privacy, scoreboard, ready_dir="clips/ready"):
     """Upload one finished clip to every target and log it. Returns {target: url}."""
-    final, cap, hook = item["final"], item["caption"], item["hook"]
+    final, hook = item["final"], item["hook"]
+    meta = item.get("meta") or {}
     targets = [t.strip() for t in upload.split(",") if t.strip() and t.strip() != "none"]
     urls = {}
     for t in targets:
         try:
+            cap = caption_text(hook, item["source"], tags, meta, t)
             if t == "youtube":
                 import uploader
-                title = hook.capitalize()[:85] + " #Shorts"
-                urls[t] = uploader.upload(final, title, cap, tags, privacy)
+                who = f" | {display_name(meta)}" if meta.get("creator") else ""
+                title = (hook.capitalize()[:70] + who)[:90] + " #Shorts"
+                urls[t] = uploader.upload(final, title, cap, " ".join(pick_tags(meta, tags)), privacy)
             elif t == "instagram":
                 import meta_uploader
                 urls[t] = meta_uploader.upload_instagram(final, cap)
