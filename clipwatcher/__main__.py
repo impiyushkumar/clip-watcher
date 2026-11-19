@@ -18,6 +18,10 @@ Commands:
     add-meme <file|URL> [--name x] [--start s] [--end s] [--use-when "..."]
                              import a reaction meme into memes/ (Gemini describes it)
     memes                    list memes/ with their "use when" descriptions
+    import-sounds [--pages 30] [--search "fahh,bruh"]
+                             download meme sounds (MyInstants) into sounds/sfx/ and label them
+    label-sounds             (re)sort + describe sounds/sfx/ with Gemini
+    import-memes <pack.txt>  download reaction memes listed in a pack (e.g. packs/reaction-memes.txt)
 """
 import sys
 
@@ -82,6 +86,23 @@ def main(argv):
         from clipwatcher.render.memes import meme_menu
         for name, use_when in meme_menu().items():
             print(f"{name}: {use_when}")
+    elif command == "import-sounds":
+        import argparse
+        from clipwatcher.library_import import import_sounds
+        parser = argparse.ArgumentParser(prog="python3 -m clipwatcher import-sounds")
+        parser.add_argument("--pages", type=int, default=30)
+        parser.add_argument("--search", default="")
+        sound_args = parser.parse_args(options)
+        import_sounds(sound_args.pages, sound_args.search.split(","))
+    elif command == "label-sounds":
+        from clipwatcher.library_import import label_sounds
+        label_sounds()
+    elif command == "import-memes":
+        from clipwatcher.library_import import import_memes
+        if not options:
+            print("usage: python3 -m clipwatcher import-memes packs/reaction-memes.txt")
+            return 1
+        import_memes(options[0])
     elif command == "rerender":
         from clipwatcher.rerender import rerender_queue
         rerender_queue(drop_missing="--drop-missing" in options)

@@ -32,8 +32,8 @@ every 1–2 s, each one synced to a word or an action, escalating to the payoff:
 clip-watcher turns this into a **beat sheet** (`render/beats.py`): Gemini watches a frame grid
 (every 1.5 s, time-stamped) and the word-timed transcript, then plans 4–10 beats across the
 clip (sound, emoji, zoom, text_card, meme, sticker) from the full kit and your meme library.
-Text cards are generated (no copyright issues); meme videos come from your own `memes/`
-library (`python3 -m clipwatcher add-meme`).
+Text cards are generated. Meme sounds (1,000+ from MyInstants) and reaction videos (starter
+pack in `packs/reaction-memes.txt`) fill the private library: `import-sounds`, `import-memes`.
 
 ## The formula (all automated)
 
@@ -81,10 +81,10 @@ Check that each streamer allows clipping, or join their clipping campaign (Whop 
 campaigns pay per verified view and each has rules (required tags, minimum length, credit).
 Match `TAGS`, `LENGTH` and the source credit to the campaign.
 
-### Copyright
-- Streamer footage: clip creators who allow clipping or run campaigns, and always keep the credit.
-- **Sounds and music:** only use what you're allowed to (the bundled kit is CC0). Ripped meme audio and popular songs trigger Content ID claims: views get monetized for someone else and campaigns reject the video.
-- Animated emojis: Google Noto, CC BY 4.0 (credited in `assets/CREDITS.md`).
+### Copyright (the owner's call)
+- **Streamer footage:** covered by the clipping-campaign agreements the owner signs. Always keep the credit.
+- **Bundled kit** (`assets/`): CC0 sounds, CC BY emojis. Safe to publish with the repo.
+- **Private library** (`sounds/sfx/`, `memes/`): third-party meme sounds and clips, downloaded by `import-sounds` / `import-memes`. Git-ignored so the public repo never republishes them. Using them in videos is the owner's decision. Short meme SFX are rarely claimed. Songs and long movie scenes are the usual Content ID triggers.
 
 ## What's still manual / next ideas
 - **Ranking compilations** ("Ranking the funniest GTA 6 moments", 5 clips, #1 last): 820K-view format, not built yet.

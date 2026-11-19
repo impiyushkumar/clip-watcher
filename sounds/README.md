@@ -1,14 +1,16 @@
-# sounds/ (your own sounds)
+# sounds/ (your private sound library)
 
-The bundled kit in `assets/sound_kit/` (443 CC0 sounds in 72 categories, grouped by when to
-use them) already works out of the box. Put your own sounds here to add to it:
+    sounds/sfx/<group>/<name>.mp3   meme sounds, grouped like the kit: impact, fail, win, hype,
+                                    danger, comedy, transition, money, reaction, quote
+    sounds/sfx/catalog.json         title + "use when" per sound (Gemini reads it)
+    sounds/music/                   background tracks; one random track per clip at MUSIC_VOLUME
 
-    sounds/sfx/     sound effects. Name each file by what it is and when it fits, because
-                    Gemini reads the name: "crowd-gasp-shocked.mp3", "laugh-wheeze.mp3".
-                    They show up in Gemini's menu as custom/<file name>.
-    sounds/music/   background tracks. One random track per clip at MUSIC_VOLUME,
-                    ducked under the streamer's voice. MUSIC_VOLUME=0 turns music off.
+Fill it with one command (1,000+ meme sounds from MyInstants: vine boom, bruh, fahhh,
+airhorn, metal pipe, GTA wasted…), then Gemini sorts them into groups and describes them:
 
-Only add audio you have the right to use in monetized videos (your own, CC0, or licensed:
-YouTube Audio Library, Pixabay, etc.). Ripped meme audio and popular songs get Shorts
-claimed or muted, and clipping campaigns reject those views.
+    python3 -m clipwatcher import-sounds --pages 40 --search "fahhh,bruh,metal pipe"
+    python3 -m clipwatcher label-sounds          # re-run after adding a Gemini key
+
+Your own files work too: drop them in `sounds/sfx/` named by what they are.
+Everything here except this README is git-ignored. These are third-party sounds, so using
+them is your call: popular songs get Content ID claims far more often than short meme SFX.

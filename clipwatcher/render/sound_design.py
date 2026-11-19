@@ -49,8 +49,9 @@ CUSTOM_PREFIX = "custom/"
 
 
 def load_sound_menu():
-    """{category: "use when" text} for every kit category plus every file in sounds/sfx/
-    (as "custom/<file name>"). This is the menu Gemini chooses from."""
+    """{category: "use when" text} for every kit category plus every sound in your library
+    sounds/sfx/ (as "custom/<group>/<file>", described by sounds/sfx/catalog.json or by
+    its file name). This is the menu Gemini chooses from."""
     menu = {}
     try:
         with open(paths.SOUND_KIT_CATALOG_FILE, encoding="utf-8") as catalog_file:
@@ -58,16 +59,27 @@ def load_sound_menu():
                 menu[category] = entry["use_when"]
     except (OSError, ValueError, KeyError):
         pass
-    for file_name in list_audio(paths.SFX_DIR):
-        menu[CUSTOM_PREFIX + file_name] = os.path.splitext(file_name)[0].replace("-", " ").replace("_", " ")
+    try:
+        with open(os.path.join(paths.SFX_DIR, "catalog.json"), encoding="utf-8") as catalog_file:
+            library = json.load(catalog_file)
+    except (OSError, ValueError):
+        library = {}
+    for folder, _subfolders, file_names in os.walk(paths.SFX_DIR):
+        for file_name in sorted(file_names):
+            if not file_name.lower().endswith(AUDIO_EXTENSIONS):
+                continue
+            relative = os.path.relpath(os.path.join(folder, file_name), paths.SFX_DIR).replace(os.sep, "/")
+            description = (library.get(relative) or {}).get("use_when") or \
+                os.path.splitext(file_name)[0].replace("-", " ").replace("_", " ")
+            menu[CUSTOM_PREFIX + relative] = description
     return menu
 
 
 def sound_files(category):
     """Absolute paths of every file in a menu category (variants of the same sound)."""
     if category.startswith(CUSTOM_PREFIX):
-        file_path = os.path.join(paths.SFX_DIR, category[len(CUSTOM_PREFIX):])
-        return [file_path] if os.path.exists(file_path) else []
+        file_path = os.path.join(paths.SFX_DIR, *category[len(CUSTOM_PREFIX):].split("/"))
+        return [file_path] if os.path.isfile(file_path) else []
     folder = os.path.join(paths.SOUND_KIT_DIR, category)
     return [os.path.join(folder, name) for name in list_audio(folder)]
 
@@ -105,7 +117,7 @@ def pick_music():
 
 def media_duration_s(media_path):
     output = subprocess.run(["ffprobe", "-v", "error", "-show_entries", "format=duration",
-                             "-of", "csv=p=0", media_path], capture_output=True, text=True).stdout
+                             "-of", "csv=p=0", media_path], capture_output=True, text=True, errors="replace").stdout
     try:
         return float(output.strip())
     except ValueError:
@@ -114,7 +126,7 @@ def media_duration_s(media_path):
 
 def has_audio(media_path):
     probe = subprocess.run(["ffprobe", "-v", "error", "-select_streams", "a", "-show_entries",
-                            "stream=index", "-of", "csv=p=0", media_path], capture_output=True, text=True)
+                            "stream=index", "-of", "csv=p=0", media_path], capture_output=True, text=True, errors="replace")
     return probe.stdout.strip() != ""
 
 
@@ -155,7 +167,7 @@ def mix_audio(video_path, output_path, sound_events, music_path=None, normalize=
                  f"{loudness},aresample=48000[audio]")
     command += ["-filter_complex", ";".join(graph), "-map", "0:v", "-map", "[audio]",
                 "-c:v", "copy", "-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart", output_path]
-    result = subprocess.run(command, capture_output=True, text=True)
+    result = subprocess.run(command, capture_output=True, text=True, errors="replace")
     if result.returncode != 0:
         log(f"audio mix failed: {result.stderr.strip()[-300:]}")
     return result.returncode == 0
@@ -164,7 +176,7 @@ def mix_audio(video_path, output_path, sound_events, music_path=None, normalize=
 def integrated_loudness(media_path):
     """Measured loudness in LUFS (EBU R128), or None."""
     output = subprocess.run(["ffmpeg", "-hide_banner", "-i", media_path, "-af", "ebur128", "-f", "null", "-"],
-                            capture_output=True, text=True).stderr
+                            capture_output=True, text=True, errors="replace").stderr
     match = re.findall(r"I:\s+(-?[\d.]+) LUFS", output)
     return float(match[-1]) if match else None
 

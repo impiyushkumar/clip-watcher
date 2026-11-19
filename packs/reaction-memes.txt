@@ -1,0 +1,41 @@
+# Reaction meme starter pack for meme-dense GTA 6 edits.
+# One meme per line: YouTube search or URL | file name | when to use it
+# Import:  python3 -m clipwatcher import-memes packs/reaction-memes.txt
+# YouTube blocks cloud servers: run this on your PC (then copy memes/ to the server), or set
+# YTDLP_COOKIES to a cookies.txt exported from your browser. Delete lines you don't want.
+
+# shock / disbelief
+vine boom stare meme green screen | vine-boom-stare | dramatic stare after something shocking or dumb
+shocked guy meme green screen | shocked-guy | pure shock when something unexpected happens
+surprised pikachu meme template | surprised-pikachu | someone acts surprised by an obvious consequence
+the rock eyebrow raise meme | rock-eyebrow | suspicious or sus moment, "really bro?"
+side eye meme green screen | side-eye | awkward or questionable behaviour
+confused math lady meme | confused-math-lady | confusion, nothing makes sense
+nick young confused meme | confused-nick-young | "what?" moment, total confusion
+hold up wait a minute meme | hold-up | something suspicious is said or seen
+# fail / pain
+sad violin meme sound | sad-violin | sad fail, pity moment
+coffin dance meme green screen | coffin-dance | someone dies or fails badly
+to be continued jojo meme green screen | to-be-continued | freeze right before a disaster
+emotional damage meme | emotional-damage | brutal roast or devastating fail
+crying michael jordan meme | crying-jordan | losing, defeat
+spongebob disappointed meme | disappointed | disappointing outcome
+oh no no no laugh meme | oh-no-no-no | watching a disaster unfold
+# laugh / win
+laughing guy meme green screen | laughing-guy | something is hilarious
+leonardo dicaprio cheers meme | dicaprio-cheers | a smooth win or perfect move
+gigachad meme green screen | gigachad | confident flex, alpha move
+mlg glasses deal with it meme | deal-with-it | a clean, cool play
+sigma face meme | sigma | cold, unbothered move
+# danger / tension
+dramatic chipmunk meme | dramatic-chipmunk | dramatic reveal
+run meme green screen | run-meme | fleeing, getting chased by cops
+gta wasted screen meme | gta-wasted | death or getting busted
+gta mission passed respect meme | mission-passed | pulling something off
+ah shit here we go again cj meme | here-we-go-again | the same problem happens again
+# random
+cat vibing meme green screen | cat-vibing | chill vibing, driving to music
+huh cat meme | huh-cat | confused "huh?"
+skeleton waiting meme | skeleton-waiting | waiting forever, slow loading
+spongebob imagination meme | imagination | wild idea, fantasy
+monkey puppet look away meme | monkey-look-away | awkward moment, pretending not to see
