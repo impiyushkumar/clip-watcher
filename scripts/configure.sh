@@ -18,7 +18,7 @@ UPLOAD="$(echo "${UPLOAD:-none}" | tr -d ' ' | tr '[:upper:]' '[:lower:]')"
 {
   echo "CHANNELS='$(echo "$CHANNELS" | tr -d ' ')'"; echo "MIN=${MIN:-10}"; echo "LENGTH=${LENGTH:-15}"
   echo "TAGS='${TAGS:-#gta6 #shorts}'"; echo "UPLOAD='$UPLOAD'"
-  echo "PRIVACY=public"; echo "MODEL=${MODEL:-small}"; echo "GEMINI_API_KEY='${GEMINI_API_KEY:-}'"; echo "LAYOUT=split"; echo "QUALITY='${QUALITY:-best}'"
+  echo "PRIVACY=public"; echo "MODEL=${MODEL:-small}"; echo "GEMINI_API_KEY='${GEMINI_API_KEY:-}'"; echo "LAYOUT=split"; echo "MUSIC_VOLUME=0"; echo "QUALITY='${QUALITY:-best}'"
   echo "POSTS_PER_DAY='${POSTS_PER_DAY:-youtube=6,instagram=10,facebook=10}'"; echo "KEEP_REC_DAYS=1"; echo "AUTO_LEARN=1"
   echo "# Google Drive sync (after 'rclone config'), e.g. CW_RCLONE_DEST='gdrive:clip-watcher'"
   echo "CW_RCLONE_DEST=''"

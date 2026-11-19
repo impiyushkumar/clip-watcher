@@ -94,7 +94,7 @@ WHISPER_VOCABULARY = _text("WHISPER_VOCABULARY",       # words Whisper should ex
 
 # --- sound ---------------------------------------------------------------------------
 SFX_VOLUME = _float("SFX_VOLUME", 0.9)                 # impact sound on the peak
-MUSIC_VOLUME = _float("MUSIC_VOLUME", 0.12)            # background music from sounds/music/ (0 = off)
+MUSIC_VOLUME = _float("MUSIC_VOLUME", 0)               # background music: off (memes + sounds only); e.g. 0.12 to enable
 LOUDNESS_LUFS = _float("LOUDNESS", -14)                # final loudness (Shorts/TikTok standard)
 
 # --- memes ---------------------------------------------------------------------------
