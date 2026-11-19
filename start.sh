@@ -1,25 +1,21 @@
 #!/usr/bin/env bash
-# One-click launcher: installs on first run, remembers your settings, starts watching.
+# One-click launcher: installs on first run, asks the setup questions once, then starts.
 cd "$(dirname "$0")"
-[ -d .venv ] || ./install.sh || { read -rp "Install failed. Press Enter..."; exit 1; }
+[ -d .venv ] || ./scripts/install.sh || { read -rp "Install failed. Press Enter..."; exit 1; }
 source .venv/bin/activate
 
-CFG=config.txt
-[ -f "$CFG" ] && source "$CFG"
-if [ -z "${CHANNELS:-${CHANNEL:-}}" ]; then ./configure.sh; source "$CFG"; fi
-export QUALITY KEEP_REC_DAYS CW_RCLONE_DEST
+[ -f config.txt ] && source config.txt
+if [ -z "${CHANNELS:-${CHANNEL:-}}" ]; then ./scripts/configure.sh; source config.txt; fi
 
 if echo ",$UPLOAD," | grep -q ",youtube," && [ ! -f token.json ] && [ -f client_secret.json ]; then
   echo "A browser will open: log in to the YouTube channel clips should go to."
-  python3 uploader.py --login
+  python3 -m clipwatcher youtube-login
 fi
 if echo ",$UPLOAD," | grep -Eq ",(instagram|facebook)," && [ ! -f meta.json ]; then
-  echo "Instagram/Facebook upload needs a one-time Meta setup (README)."
-  read -rp "Run it now? (y/n) [n]: " M; [ "$M" = "y" ] && python3 meta_uploader.py --setup
+  echo "Instagram/Facebook upload needs a one-time Meta setup (docs/setup-meta.md)."
+  read -rp "Run it now? (y/n) [n]: " ANSWER; [ "$ANSWER" = "y" ] && python3 -m clipwatcher meta-setup
 fi
-UPLOAD="$(UPLOAD="$UPLOAD" ./check_uploads.sh)"
-echo "Uploading to: $UPLOAD"
 
 echo "Starting... (Ctrl+C to stop)"
-./run.sh
+./scripts/run.sh
 read -rp "Stopped. Press Enter to close..."

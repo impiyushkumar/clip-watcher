@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# Asks the setup questions and writes config.txt (run again any time to change settings).
-cd "$(dirname "$0")"
+# Asks the setup questions and writes config.txt in the repo root (run again any time).
+# Every setting, including ones not asked here, is documented in config.example.txt.
+cd "$(dirname "$0")/.."
 echo "=== clip-watcher setup (saved to config.txt) ==="
 echo "Channels to watch, comma separated (up to 3 on a 2-CPU server), e.g. kaicenat,ohnepixel,kick:n3on"
 read -rp "Channels: " CHANNELS

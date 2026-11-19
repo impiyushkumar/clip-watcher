@@ -1,0 +1,49 @@
+# clip-watcher settings. Copy to config.txt (or run ./scripts/configure.sh) and edit.
+# Shell syntax: KEY=value, quote values with spaces or #. Empty value = use the default.
+# Python reads this through clipwatcher/settings.py; the Python name is shown in [brackets].
+# After changing it on a server: sudo systemctl restart clip-watcher
+
+# ---- what to watch ----------------------------------------------------------------
+CHANNELS='kaicenat,ohnepixel,kick:n3on'   # [CHANNELS] twitch name, twitch:x, youtube:@handle, youtube:UC..., kick:x
+QUALITY='best'               # [RECORD_QUALITY] streamlink quality: best, 1080p60, 720p60, 720p ...
+
+# ---- spike detection --------------------------------------------------------------
+MIN=10                       # [SPIKE_MIN_MESSAGES] min chat messages in a 10 s bucket
+FACTOR=2.5                   # [SPIKE_FACTOR] bucket must be this many times the 3-min median
+COOLDOWN=0                   # [CLIP_COOLDOWN_S] min seconds between clips per channel
+LENGTH=30                    # [CLIP_LENGTH_S] clip length (2/3 before the spike, 1/3 after)
+AUTO_LEARN=1                 # [AUTO_LEARN] 1 = learn best length/hours/hook from views
+
+# ---- clip style -------------------------------------------------------------------
+MODEL=base                   # [WHISPER_MODEL] tiny (fast) / base / small (accurate)
+RES=1080x1920                # [OUTPUT_RESOLUTION] 720x1280 on small servers
+THREADS=0                    # [FFMPEG_THREADS] CPU threads per job, 0 = auto
+LAYOUT=crop                  # [LAYOUT] crop = fill screen, fit = whole frame + blurred background
+HOOK=1                       # [SHOW_HOOK] 0 = no hook text at the top
+ZOOM=1                       # [ZOOM_PUNCH] 0 = no zoom on the hype moment
+MEME_CHANCE=0.6              # [MEME_CHANCE] share of clips that cut to a meme from memes/
+MEME_SECONDS=2.2             # [MEME_SECONDS] meme length
+CW_FONT=Anton                # [FONT_NAME] font family in assets/fonts/
+GEMINI_API_KEY=''            # [GEMINI_API_KEY] optional: AI hooks + meme choice. Keep it secret.
+GEMINI_MODEL=gemini-flash-latest   # [GEMINI_MODEL]
+
+# ---- captions and posting ---------------------------------------------------------
+TAGS='#gaming #shorts'       # [HASHTAGS] your own hashtags
+CTA='Follow for daily stream clips 🔥'   # [CALL_TO_ACTION] last caption line
+UPLOAD='none'                # [UPLOAD_TARGETS] any of youtube,instagram,facebook, or none
+PRIVACY=public               # [PRIVACY] YouTube: public / unlisted / private
+POSTS_PER_DAY='youtube=6,instagram=10,facebook=10'   # [POSTS_PER_DAY] empty = post each clip at once
+POST_EVERY=0                 # [POST_EVERY_H] hours between posts for every target (if no POSTS_PER_DAY)
+CW_RCLONE_DEST=''            # [RCLONE_DEST] copy finished clips to e.g. 'gdrive:clip-watcher'
+
+# ---- disk -------------------------------------------------------------------------
+KEEP_MINUTES=10              # [BUFFER_MINUTES] rolling recording buffer per channel
+KEEP_REC_DAYS=1              # [KEEP_RECORDINGS_DAYS] delete old recordings
+KEEP_CLIP_DAYS=2             # [KEEP_POSTED_CLIP_DAYS] delete clips this long after posting everywhere
+MAX_AGE_H=0                  # [MAX_QUEUE_AGE_H] skip queued clips older than this, 0 = never
+DISK_LIMIT=80                # [DISK_LIMIT_PERCENT] above this, drop the weakest unposted clips
+
+# ---- debugging (usually set as environment variables, not here) -------------------
+# CW_DEBUG=1                 # [DEBUG] log every chat bucket
+# CW_POLL=300                # [SCHEDULER_POLL_S] how often the scheduler checks
+# STREAM_END_GRACE=900       # (watch-channel.sh) force-stop seconds after the stream ends
