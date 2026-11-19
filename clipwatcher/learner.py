@@ -3,7 +3,7 @@
 From clips/scoreboard.csv (views come from the YouTube API) it learns:
     best clip length    -> used for the next stream (scripts/run.sh asks pick-length)
     best posting hours  -> the scheduler waits for a good hour (max one extra interval)
-    best hook length    -> render/hook.py uses hook_words
+    best hook length    -> reported in learning.md (hooks are written by render/copywriting.py)
 About 1 in 5 streams still tests a different length, so it keeps exploring.
 Output: clips/auto.json (applied settings) and clips/learning.md (human report).
 
@@ -20,7 +20,7 @@ from collections import defaultdict
 from clipwatcher import paths
 from clipwatcher.publish import scoreboard
 
-CANDIDATE_LENGTHS_S = [15, 20, 30, 45]
+CANDIDATE_LENGTHS_S = [10, 15, 20, 30]
 MIN_JUDGED_POSTS = 8     # posts with views before trusting the data
 MIN_POST_AGE_H = 24      # judge a post only after it had a day to get views
 EXPLORE_SHARE = 0.2      # share of streams that test a non-best length

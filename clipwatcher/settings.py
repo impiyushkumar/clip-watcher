@@ -68,17 +68,38 @@ RECORD_QUALITY = _text("QUALITY", "best")              # streamlink quality (use
 SPIKE_MIN_MESSAGES = _int("MIN", 10)                   # min messages in a 10 s bucket
 SPIKE_FACTOR = _float("FACTOR", 2.5)                   # bucket must be this x the 3-min median
 CLIP_COOLDOWN_S = _int("COOLDOWN", 0)                  # min seconds between clips per channel
-CLIP_LENGTH_S = _int("LENGTH", 30)                     # 2/3 before the spike, 1/3 after
+CLIP_LENGTH_S = _int("LENGTH", 15)                     # final clip length (viral GTA clips: 8-20 s)
+SEARCH_BEFORE_S = _int("SEARCH_BEFORE", 25)            # cut this much before the chat spike...
+SEARCH_AFTER_S = _int("SEARCH_AFTER", 6)               # ...and after, then find the real peak in it
+AFTER_PEAK_S = _float("AFTER_PEAK", 2.5)               # keep this much after the peak, then hard cut
 
-# --- rendering ---------------------------------------------------------------------
-WHISPER_MODEL = _text("MODEL", "base")                 # tiny / base / small
+# --- layout and picture ------------------------------------------------------------
 OUTPUT_RESOLUTION = _text("RES", "1080x1920")          # "WIDTHxHEIGHT"
 FFMPEG_THREADS = _text("THREADS", "0")                 # 0 = auto
-LAYOUT = _text("LAYOUT", "crop")                       # crop = fill screen, fit = full frame + blur
-SHOW_HOOK = _flag("HOOK", True)                        # hook text at the top
-ZOOM_PUNCH = _flag("ZOOM", True)                       # quick zoom on the hype moment
-MEME_CHANCE = _float("MEME_CHANCE", 0.6)               # share of clips with a meme cutaway
-MEME_SECONDS = _float("MEME_SECONDS", 2.2)
+LAYOUT = _text("LAYOUT", "split")                      # split = facecam on top + gameplay below
+                                                       # crop = fill screen, fit = full frame + blur
+FACECAMS = _text("FACECAMS")                           # manual facecam boxes, "xqc=0.73,0,0.27,0.3;n3on=none"
+FACECAM_SHARE = _float("FACECAM_SHARE", 0.38)          # share of the height the facecam gets in split
+COLOR_BOOST = _flag("COLOR_BOOST", True)               # punchier colours + sharpen
+ZOOM_PUNCH = _flag("ZOOM", True)                       # zoom punch-in on the peak
+SHAKE = _flag("SHAKE", True)                           # camera shake on the peak
+FLASH = _flag("FLASH", True)                           # white flash frame on the peak
+
+# --- text ----------------------------------------------------------------------------
+SHOW_HOOK = _flag("HOOK", True)                        # context hook box
+CAPTION_WORDS = _int("CAPTION_WORDS", 2)               # words on screen at a time
+WHISPER_MODEL = _text("MODEL", "small")                # tiny / base / small / medium (accuracy vs speed)
+WHISPER_VOCABULARY = _text("WHISPER_VOCABULARY",       # words Whisper should expect
+                           "GTA 6, GTA VI, Vice City, Leonida, Lucia, Jason, NPC, chat, bro")
+
+# --- sound ---------------------------------------------------------------------------
+SFX_VOLUME = _float("SFX_VOLUME", 0.9)                 # impact sound on the peak
+MUSIC_VOLUME = _float("MUSIC_VOLUME", 0.12)            # background music from sounds/music/ (0 = off)
+LOUDNESS_LUFS = _float("LOUDNESS", -14)                # final loudness (Shorts/TikTok standard)
+
+# --- memes ---------------------------------------------------------------------------
+MEME_CHANCE = _float("MEME_CHANCE", 0.4)               # share of clips with a meme cutaway
+MEME_SECONDS = _float("MEME_SECONDS", 1.8)
 FONT_NAME = _text("CW_FONT", "Anton")                  # font family in assets/fonts/
 GEMINI_API_KEY = _text("GEMINI_API_KEY")               # optional: AI hooks + meme choice
 GEMINI_MODEL = _text("GEMINI_MODEL", "gemini-flash-latest")

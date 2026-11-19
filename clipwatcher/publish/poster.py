@@ -5,7 +5,7 @@ import time
 from clipwatcher import paths
 from clipwatcher.log import log
 from clipwatcher.publish import meta_graph, scoreboard, youtube
-from clipwatcher.publish.post_text import build_caption, pick_hashtags, youtube_title
+from clipwatcher.publish.post_text import build_caption, pick_hashtags, search_phrases, youtube_title
 
 PLATFORMS = ("youtube", "instagram", "facebook")
 
@@ -43,14 +43,18 @@ def post_clip(queue_item, targets_text, hashtags, privacy):
     """Upload `queue_item` (see render/pipeline.py) to each target. Returns {platform: url}."""
     video_path = resolve_path(queue_item["final"])
     hook = queue_item["hook"]
+    title = queue_item.get("title", "")
     stream_info = queue_item.get("meta") or {}
     urls = {}
     for target in split_targets(targets_text):
         try:
-            caption = build_caption(hook, queue_item["source"], hashtags, stream_info, target)
+            caption = build_caption(hook, queue_item["source"], hashtags, stream_info, target, title=title)
             if target == "youtube":
-                urls[target] = youtube.upload_short(video_path, youtube_title(hook, stream_info), caption,
-                                                    " ".join(pick_hashtags(stream_info, hashtags)), privacy)
+                urls[target] = youtube.upload_short(video_path, youtube_title(hook, stream_info, title), caption,
+                                                    " ".join(pick_hashtags(stream_info, hashtags)), privacy,
+                                                    extra_tags=search_phrases(stream_info))
+                if queue_item.get("comment"):
+                    youtube.post_comment(urls[target], queue_item["comment"])
             elif target == "instagram":
                 urls[target] = meta_graph.upload_instagram_reel(video_path, caption)
             elif target == "facebook":

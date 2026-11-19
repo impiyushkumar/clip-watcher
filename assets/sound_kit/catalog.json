@@ -1,0 +1,1036 @@
+{
+ "comedy/8bit-jingle": {
+  "use_when": "retro game jingle: gamer moments, nostalgic or nerdy reactions",
+  "files": [
+   "comedy/8bit-jingle/jingles-nes00.mp3",
+   "comedy/8bit-jingle/jingles-nes01.mp3",
+   "comedy/8bit-jingle/jingles-nes02.mp3",
+   "comedy/8bit-jingle/jingles-nes03.mp3",
+   "comedy/8bit-jingle/jingles-nes04.mp3",
+   "comedy/8bit-jingle/jingles-nes05.mp3",
+   "comedy/8bit-jingle/jingles-nes06.mp3",
+   "comedy/8bit-jingle/jingles-nes07.mp3",
+   "comedy/8bit-jingle/jingles-nes08.mp3",
+   "comedy/8bit-jingle/jingles-nes09.mp3",
+   "comedy/8bit-jingle/jingles-nes10.mp3",
+   "comedy/8bit-jingle/jingles-nes11.mp3",
+   "comedy/8bit-jingle/jingles-nes12.mp3",
+   "comedy/8bit-jingle/jingles-nes13.mp3",
+   "comedy/8bit-jingle/jingles-nes14.mp3",
+   "comedy/8bit-jingle/jingles-nes15.mp3",
+   "comedy/8bit-jingle/jingles-nes16.mp3"
+  ],
+  "sources": [
+   "Kenney music-jingles"
+  ]
+ },
+ "comedy/bloop": {
+  "use_when": "a small silly sound for a goofy action or a dumb idea",
+  "files": [
+   "comedy/bloop/pepsound1.mp3",
+   "comedy/bloop/pepsound2.mp3",
+   "comedy/bloop/pepsound3.mp3",
+   "comedy/bloop/pepsound4.mp3",
+   "comedy/bloop/pepsound5.mp3",
+   "comedy/bloop/phasejump1.mp3",
+   "comedy/bloop/phasejump2.mp3",
+   "comedy/bloop/phasejump3.mp3",
+   "comedy/bloop/phasejump4.mp3",
+   "comedy/bloop/phasejump5.mp3"
+  ],
+  "sources": [
+   "Kenney digital-audio"
+  ]
+ },
+ "comedy/boing": {
+  "use_when": "cartoon boing: bouncing, jumping, goofy physics, something springy",
+  "files": [
+   "comedy/boing/boing.mp3"
+  ],
+  "sources": [
+   "synthesized (clip-watcher)"
+  ]
+ },
+ "comedy/island-vibes": {
+  "use_when": "chill tropical vibe: Vice City beaches, vacation, relaxing in-game",
+  "files": [
+   "comedy/island-vibes/jingles-steel00.mp3",
+   "comedy/island-vibes/jingles-steel01.mp3",
+   "comedy/island-vibes/jingles-steel02.mp3",
+   "comedy/island-vibes/jingles-steel03.mp3",
+   "comedy/island-vibes/jingles-steel04.mp3",
+   "comedy/island-vibes/jingles-steel05.mp3",
+   "comedy/island-vibes/jingles-steel06.mp3",
+   "comedy/island-vibes/jingles-steel07.mp3",
+   "comedy/island-vibes/jingles-steel08.mp3",
+   "comedy/island-vibes/jingles-steel09.mp3",
+   "comedy/island-vibes/jingles-steel10.mp3",
+   "comedy/island-vibes/jingles-steel11.mp3",
+   "comedy/island-vibes/jingles-steel12.mp3",
+   "comedy/island-vibes/jingles-steel13.mp3",
+   "comedy/island-vibes/jingles-steel14.mp3",
+   "comedy/island-vibes/jingles-steel15.mp3",
+   "comedy/island-vibes/jingles-steel16.mp3"
+  ],
+  "sources": [
+   "Kenney music-jingles"
+  ]
+ },
+ "comedy/its-a-tie": {
+  "use_when": "'IT'S A TIE': both fail, nobody wins",
+  "files": [
+   "comedy/its-a-tie/it-s-a-tie-fighter.mp3",
+   "comedy/its-a-tie/its-a-tie-female.mp3",
+   "comedy/its-a-tie/its-a-tie-male.mp3"
+  ],
+  "sources": [
+   "Kenney voiceover-pack-fighter",
+   "Kenney voiceover-pack"
+  ]
+ },
+ "comedy/record-scratch": {
+  "use_when": "'wait, what?' freeze moment: something awkward or unexpected stops everything",
+  "files": [
+   "comedy/record-scratch/record-scratch.mp3"
+  ],
+  "sources": [
+   "synthesized (clip-watcher)"
+  ]
+ },
+ "comedy/sexy-sax": {
+  "use_when": "flirting, rizz, a romantic or suggestive moment (Lucia, dates, strip club jokes)",
+  "files": [
+   "comedy/sexy-sax/jingles-sax00.mp3",
+   "comedy/sexy-sax/jingles-sax01.mp3",
+   "comedy/sexy-sax/jingles-sax02.mp3",
+   "comedy/sexy-sax/jingles-sax03.mp3",
+   "comedy/sexy-sax/jingles-sax04.mp3",
+   "comedy/sexy-sax/jingles-sax05.mp3",
+   "comedy/sexy-sax/jingles-sax06.mp3",
+   "comedy/sexy-sax/jingles-sax07.mp3",
+   "comedy/sexy-sax/jingles-sax08.mp3",
+   "comedy/sexy-sax/jingles-sax09.mp3",
+   "comedy/sexy-sax/jingles-sax10.mp3",
+   "comedy/sexy-sax/jingles-sax11.mp3",
+   "comedy/sexy-sax/jingles-sax12.mp3",
+   "comedy/sexy-sax/jingles-sax13.mp3",
+   "comedy/sexy-sax/jingles-sax14.mp3",
+   "comedy/sexy-sax/jingles-sax15.mp3",
+   "comedy/sexy-sax/jingles-sax16.mp3"
+  ],
+  "sources": [
+   "Kenney music-jingles"
+  ]
+ },
+ "comedy/sneaky": {
+  "use_when": "sneaking, stealing, being sus, a mischievous plan",
+  "files": [
+   "comedy/sneaky/jingles-pizzi00.mp3",
+   "comedy/sneaky/jingles-pizzi01.mp3",
+   "comedy/sneaky/jingles-pizzi02.mp3",
+   "comedy/sneaky/jingles-pizzi03.mp3",
+   "comedy/sneaky/jingles-pizzi04.mp3",
+   "comedy/sneaky/jingles-pizzi05.mp3",
+   "comedy/sneaky/jingles-pizzi06.mp3",
+   "comedy/sneaky/jingles-pizzi07.mp3",
+   "comedy/sneaky/jingles-pizzi08.mp3",
+   "comedy/sneaky/jingles-pizzi09.mp3",
+   "comedy/sneaky/jingles-pizzi10.mp3",
+   "comedy/sneaky/jingles-pizzi11.mp3",
+   "comedy/sneaky/jingles-pizzi12.mp3",
+   "comedy/sneaky/jingles-pizzi13.mp3",
+   "comedy/sneaky/jingles-pizzi14.mp3",
+   "comedy/sneaky/jingles-pizzi15.mp3",
+   "comedy/sneaky/jingles-pizzi16.mp3"
+  ],
+  "sources": [
+   "Kenney music-jingles"
+  ]
+ },
+ "comedy/squish": {
+  "use_when": "gross or squishy moment, stepping in something",
+  "files": [
+   "comedy/squish/slime-000.mp3",
+   "comedy/squish/slime-001.mp3"
+  ],
+  "sources": [
+   "Kenney sci-fi-sounds"
+  ]
+ },
+ "comedy/tie-breaker": {
+  "use_when": "'TIE BREAKER': deciding an argument",
+  "files": [
+   "comedy/tie-breaker/tie-breaker-fighter.mp3"
+  ],
+  "sources": [
+   "Kenney voiceover-pack-fighter"
+  ]
+ },
+ "danger/call-for-backup": {
+  "use_when": "'CALL FOR BACKUP': outnumbered, overwhelmed",
+  "files": [
+   "danger/call-for-backup/war-call-for-backup-female.mp3",
+   "danger/call-for-backup/war-call-for-backup-male.mp3"
+  ],
+  "sources": [
+   "Kenney voiceover-pack"
+  ]
+ },
+ "danger/cover-me": {
+  "use_when": "'COVER ME': a shootout",
+  "files": [
+   "danger/cover-me/war-cover-me-female.mp3",
+   "danger/cover-me/war-cover-me-male.mp3"
+  ],
+  "sources": [
+   "Kenney voiceover-pack"
+  ]
+ },
+ "danger/fire-in-the-hole": {
+  "use_when": "'FIRE IN THE HOLE': a grenade or explosion is coming",
+  "files": [
+   "danger/fire-in-the-hole/war-fire-in-the-hole-female.mp3",
+   "danger/fire-in-the-hole/war-fire-in-the-hole-male.mp3"
+  ],
+  "sources": [
+   "Kenney voiceover-pack"
+  ]
+ },
+ "danger/get-down": {
+  "use_when": "'GET DOWN': gunfire, ducking",
+  "files": [
+   "danger/get-down/war-get-down-female.mp3",
+   "danger/get-down/war-get-down-male.mp3"
+  ],
+  "sources": [
+   "Kenney voiceover-pack"
+  ]
+ },
+ "danger/heartbeat": {
+  "use_when": "suspense, hiding, about to get caught, nervous moment",
+  "files": [
+   "danger/heartbeat/heartbeat.mp3"
+  ],
+  "sources": [
+   "synthesized (clip-watcher)"
+  ]
+ },
+ "danger/hurry-up": {
+  "use_when": "'HURRY UP': running out of time, panic",
+  "files": [
+   "danger/hurry-up/hurry-up-female.mp3",
+   "danger/hurry-up/hurry-up-male.mp3"
+  ],
+  "sources": [
+   "Kenney voiceover-pack"
+  ]
+ },
+ "danger/look-out": {
+  "use_when": "'LOOK OUT': sudden danger, a car or NPC coming",
+  "files": [
+   "danger/look-out/war-look-out-female.mp3",
+   "danger/look-out/war-look-out-male.mp3"
+  ],
+  "sources": [
+   "Kenney voiceover-pack"
+  ]
+ },
+ "danger/medic": {
+  "use_when": "'MEDIC!': someone gets badly hurt (comedic)",
+  "files": [
+   "danger/medic/war-medic-female.mp3",
+   "danger/medic/war-medic-male.mp3"
+  ],
+  "sources": [
+   "Kenney voiceover-pack"
+  ]
+ },
+ "danger/siren": {
+  "use_when": "police show up, wanted level, getting chased by cops",
+  "files": [
+   "danger/siren/siren.mp3"
+  ],
+  "sources": [
+   "synthesized (clip-watcher)"
+  ]
+ },
+ "danger/sniper": {
+  "use_when": "'SNIPER': getting shot from far away out of nowhere",
+  "files": [
+   "danger/sniper/war-sniper-female.mp3",
+   "danger/sniper/war-sniper-male.mp3"
+  ],
+  "sources": [
+   "Kenney voiceover-pack"
+  ]
+ },
+ "danger/suspense-sting": {
+  "use_when": "a dark reveal, something creepy or ominous",
+  "files": [
+   "danger/suspense-sting/sting-suspense.mp3"
+  ],
+  "sources": [
+   "synthesized (clip-watcher)"
+  ]
+ },
+ "danger/target-destroyed": {
+  "use_when": "'TARGET DESTROYED': something or someone obliterated",
+  "files": [
+   "danger/target-destroyed/war-target-destroyed-female.mp3",
+   "danger/target-destroyed/war-target-destroyed-male.mp3"
+  ],
+  "sources": [
+   "Kenney voiceover-pack"
+  ]
+ },
+ "danger/watch-my-back": {
+  "use_when": "'WATCH MY BACK': paranoia, being followed",
+  "files": [
+   "danger/watch-my-back/war-watch-my-back-female.mp3",
+   "danger/watch-my-back/war-watch-my-back-male.mp3"
+  ],
+  "sources": [
+   "Kenney voiceover-pack"
+  ]
+ },
+ "fail/error-buzzer": {
+  "use_when": "wrong answer buzzer: bad decision, failed attempt, 'nope'",
+  "files": [
+   "fail/error-buzzer/buzzer-wrong.mp3",
+   "fail/error-buzzer/error-001.mp3",
+   "fail/error-buzzer/error-002.mp3",
+   "fail/error-buzzer/error-003.mp3",
+   "fail/error-buzzer/error-004.mp3",
+   "fail/error-buzzer/error-005.mp3",
+   "fail/error-buzzer/error-006.mp3",
+   "fail/error-buzzer/error-007.mp3",
+   "fail/error-buzzer/error-008.mp3"
+  ],
+  "sources": [
+   "synthesized (clip-watcher)",
+   "Kenney interface-sounds"
+  ]
+ },
+ "fail/game-over": {
+  "use_when": "'GAME OVER': death, total fail, everything is ruined",
+  "files": [
+   "fail/game-over/game-over-female.mp3",
+   "fail/game-over/game-over-fighter.mp3",
+   "fail/game-over/game-over-male.mp3"
+  ],
+  "sources": [
+   "Kenney voiceover-pack",
+   "Kenney voiceover-pack-fighter"
+  ]
+ },
+ "fail/loser": {
+  "use_when": "'LOSER': mocking a big fail or a sore loser",
+  "files": [
+   "fail/loser/loser-fighter.mp3"
+  ],
+  "sources": [
+   "Kenney voiceover-pack-fighter"
+  ]
+ },
+ "fail/mission-failed": {
+  "use_when": "GTA-style 'MISSION FAILED': the streamer dies, gets caught, the heist fails",
+  "files": [
+   "fail/mission-failed/mission-failed-female.mp3",
+   "fail/mission-failed/mission-failed-male.mp3"
+  ],
+  "sources": [
+   "Kenney voiceover-pack"
+  ]
+ },
+ "fail/power-down": {
+  "use_when": "losing, dying, getting arrested, energy draining away, disappointment",
+  "files": [
+   "fail/power-down/highdown.mp3",
+   "fail/power-down/lowdown.mp3",
+   "fail/power-down/lowthreetone.mp3",
+   "fail/power-down/phaserdown1.mp3",
+   "fail/power-down/phaserdown2.mp3",
+   "fail/power-down/phaserdown3.mp3",
+   "fail/power-down/zapthreetonedown.mp3"
+  ],
+  "sources": [
+   "Kenney digital-audio"
+  ]
+ },
+ "fail/sad-trombone": {
+  "use_when": "wah-wah-wah-waaah: an obvious fail, plan goes wrong, cringe moment",
+  "files": [
+   "fail/sad-trombone/fail-trombone.mp3"
+  ],
+  "sources": [
+   "synthesized (clip-watcher)"
+  ]
+ },
+ "fail/time-over": {
+  "use_when": "'TIME OVER': too late, missed the chance",
+  "files": [
+   "fail/time-over/time-over-female.mp3",
+   "fail/time-over/time-over-male.mp3"
+  ],
+  "sources": [
+   "Kenney voiceover-pack"
+  ]
+ },
+ "fail/wrong": {
+  "use_when": "'WRONG': a bad guess or a wrong decision",
+  "files": [
+   "fail/wrong/wrong-female.mp3",
+   "fail/wrong/wrong-male.mp3"
+  ],
+  "sources": [
+   "Kenney voiceover-pack"
+  ]
+ },
+ "fail/you-lose": {
+  "use_when": "'YOU LOSE': losing a fight, a race or an argument",
+  "files": [
+   "fail/you-lose/you-lose-female.mp3",
+   "fail/you-lose/you-lose-fighter.mp3",
+   "fail/you-lose/you-lose-male.mp3"
+  ],
+  "sources": [
+   "Kenney voiceover-pack",
+   "Kenney voiceover-pack-fighter"
+  ]
+ },
+ "hype/airhorn": {
+  "use_when": "MLG airhorn: an insane play, a hype moment, celebration",
+  "files": [
+   "hype/airhorn/airhorn-long.mp3",
+   "hype/airhorn/airhorn.mp3"
+  ],
+  "sources": [
+   "synthesized (clip-watcher)"
+  ]
+ },
+ "hype/combo": {
+  "use_when": "'COMBO': chaining stunts or hits",
+  "files": [
+   "hype/combo/combo-fighter.mp3"
+  ],
+  "sources": [
+   "Kenney voiceover-pack-fighter"
+  ]
+ },
+ "hype/combo-breaker": {
+  "use_when": "'COMBO BREAKER': something interrupts a streak",
+  "files": [
+   "hype/combo-breaker/combo-breaker-fighter.mp3"
+  ],
+  "sources": [
+   "Kenney voiceover-pack-fighter"
+  ]
+ },
+ "hype/fight": {
+  "use_when": "'FIGHT!': a fight is about to start, a standoff, a confrontation",
+  "files": [
+   "hype/fight/fight-fighter.mp3"
+  ],
+  "sources": [
+   "Kenney voiceover-pack-fighter"
+  ]
+ },
+ "hype/final-round": {
+  "use_when": "'FINAL ROUND': the last attempt, a showdown",
+  "files": [
+   "hype/final-round/final-round-female.mp3",
+   "hype/final-round/final-round-fighter.mp3",
+   "hype/final-round/final-round-male.mp3"
+  ],
+  "sources": [
+   "Kenney voiceover-pack",
+   "Kenney voiceover-pack-fighter"
+  ]
+ },
+ "hype/go": {
+  "use_when": "'GO!': the start of a race, chase or crazy idea",
+  "files": [
+   "hype/go/go-female.mp3",
+   "hype/go/go-male.mp3"
+  ],
+  "sources": [
+   "Kenney voiceover-pack"
+  ]
+ },
+ "hype/go-go-go": {
+  "use_when": "'GO GO GO': fleeing, a chase starts, running from cops",
+  "files": [
+   "hype/go-go-go/war-go-go-go-female.mp3",
+   "hype/go-go-go/war-go-go-go-male.mp3"
+  ],
+  "sources": [
+   "Kenney voiceover-pack"
+  ]
+ },
+ "hype/kill-him": {
+  "use_when": "'KILL HIM': chat or streamer going after an NPC (comedic)",
+  "files": [
+   "hype/kill-him/kill-him-fighter.mp3"
+  ],
+  "sources": [
+   "Kenney voiceover-pack-fighter"
+  ]
+ },
+ "hype/multi-kill": {
+  "use_when": "'MULTI KILL': taking out many NPCs or cops at once",
+  "files": [
+   "hype/multi-kill/multi-kill-fighter.mp3"
+  ],
+  "sources": [
+   "Kenney voiceover-pack-fighter"
+  ]
+ },
+ "hype/prepare-yourself": {
+  "use_when": "'PREPARE YOURSELF': right before something crazy happens",
+  "files": [
+   "hype/prepare-yourself/prepare-yourself-fighter.mp3"
+  ],
+  "sources": [
+   "Kenney voiceover-pack-fighter"
+  ]
+ },
+ "hype/riser": {
+  "use_when": "tension rising into a reveal or before the peak",
+  "files": [
+   "hype/riser/riser.mp3"
+  ],
+  "sources": [
+   "synthesized (clip-watcher)"
+  ]
+ },
+ "hype/sudden-death": {
+  "use_when": "'SUDDEN DEATH': a tense do-or-die moment",
+  "files": [
+   "hype/sudden-death/sudden-death-fighter.mp3"
+  ],
+  "sources": [
+   "Kenney voiceover-pack-fighter"
+  ]
+ },
+ "impact/bass-boom": {
+  "use_when": "the classic meme bass boom: shock reveal, staring in disbelief, 'wait what', dramatic realization",
+  "files": [
+   "impact/bass-boom/boom-cinematic.mp3",
+   "impact/bass-boom/boom-deep.mp3",
+   "impact/bass-boom/boom-distorted.mp3",
+   "impact/bass-boom/boom-vine.mp3"
+  ],
+  "sources": [
+   "synthesized (clip-watcher)"
+  ]
+ },
+ "impact/bonk": {
+  "use_when": "cartoon bonk: dumb mistake, hitting your head, 'go to horny jail' energy, silly fail",
+  "files": [
+   "impact/bonk/bonk.mp3"
+  ],
+  "sources": [
+   "synthesized (clip-watcher)"
+  ]
+ },
+ "impact/explosion": {
+  "use_when": "explosions, cars blowing up, grenades, total chaos",
+  "files": [
+   "impact/explosion/explosioncrunch-000.mp3",
+   "impact/explosion/explosioncrunch-001.mp3",
+   "impact/explosion/explosioncrunch-002.mp3",
+   "impact/explosion/explosioncrunch-003.mp3",
+   "impact/explosion/explosioncrunch-004.mp3",
+   "impact/explosion/lowfrequency-explosion-000.mp3",
+   "impact/explosion/lowfrequency-explosion-001.mp3"
+  ],
+  "sources": [
+   "Kenney sci-fi-sounds"
+  ]
+ },
+ "impact/glass-shatter": {
+  "use_when": "windows smashing, car windshield breaking, something fragile shattering, a 'broken' reaction",
+  "files": [
+   "impact/glass-shatter/impactglass-heavy-000.mp3",
+   "impact/glass-shatter/impactglass-heavy-001.mp3",
+   "impact/glass-shatter/impactglass-heavy-002.mp3",
+   "impact/glass-shatter/impactglass-heavy-003.mp3",
+   "impact/glass-shatter/impactglass-heavy-004.mp3",
+   "impact/glass-shatter/impactglass-light-000.mp3",
+   "impact/glass-shatter/impactglass-light-001.mp3",
+   "impact/glass-shatter/impactglass-light-002.mp3",
+   "impact/glass-shatter/impactglass-light-003.mp3",
+   "impact/glass-shatter/impactglass-light-004.mp3",
+   "impact/glass-shatter/impactglass-medium-000.mp3",
+   "impact/glass-shatter/impactglass-medium-001.mp3",
+   "impact/glass-shatter/impactglass-medium-002.mp3",
+   "impact/glass-shatter/impactglass-medium-003.mp3",
+   "impact/glass-shatter/impactglass-medium-004.mp3"
+  ],
+  "sources": [
+   "Kenney impact-sounds"
+  ]
+ },
+ "impact/metal-clang": {
+  "use_when": "car crash, hitting a pole or wall, metal objects colliding",
+  "files": [
+   "impact/metal-clang/impactmetal-000.mp3",
+   "impact/metal-clang/impactmetal-001.mp3",
+   "impact/metal-clang/impactmetal-002.mp3",
+   "impact/metal-clang/impactmetal-003.mp3",
+   "impact/metal-clang/impactmetal-004.mp3",
+   "impact/metal-clang/impactmetal-heavy-000.mp3",
+   "impact/metal-clang/impactmetal-heavy-001.mp3",
+   "impact/metal-clang/impactmetal-heavy-002.mp3",
+   "impact/metal-clang/impactmetal-heavy-003.mp3",
+   "impact/metal-clang/impactmetal-heavy-004.mp3",
+   "impact/metal-clang/impactmetal-light-000.mp3",
+   "impact/metal-clang/impactmetal-light-001.mp3",
+   "impact/metal-clang/impactmetal-light-002.mp3",
+   "impact/metal-clang/impactmetal-light-003.mp3",
+   "impact/metal-clang/impactmetal-light-004.mp3",
+   "impact/metal-clang/impactmetal-medium-000.mp3",
+   "impact/metal-clang/impactmetal-medium-001.mp3",
+   "impact/metal-clang/impactmetal-medium-002.mp3",
+   "impact/metal-clang/impactmetal-medium-003.mp3",
+   "impact/metal-clang/impactmetal-medium-004.mp3",
+   "impact/metal-clang/impactplate-heavy-000.mp3",
+   "impact/metal-clang/impactplate-heavy-001.mp3",
+   "impact/metal-clang/impactplate-heavy-002.mp3",
+   "impact/metal-clang/impactplate-heavy-003.mp3",
+   "impact/metal-clang/impactplate-heavy-004.mp3",
+   "impact/metal-clang/impactplate-light-000.mp3",
+   "impact/metal-clang/impactplate-light-001.mp3",
+   "impact/metal-clang/impactplate-light-002.mp3",
+   "impact/metal-clang/impactplate-light-003.mp3",
+   "impact/metal-clang/impactplate-light-004.mp3",
+   "impact/metal-clang/impactplate-medium-000.mp3",
+   "impact/metal-clang/impactplate-medium-001.mp3",
+   "impact/metal-clang/impactplate-medium-002.mp3",
+   "impact/metal-clang/impactplate-medium-003.mp3",
+   "impact/metal-clang/impactplate-medium-004.mp3",
+   "impact/metal-clang/impacttin-medium-000.mp3",
+   "impact/metal-clang/impacttin-medium-001.mp3",
+   "impact/metal-clang/impacttin-medium-002.mp3",
+   "impact/metal-clang/impacttin-medium-003.mp3",
+   "impact/metal-clang/impacttin-medium-004.mp3",
+   "impact/metal-clang/metalpot1.mp3",
+   "impact/metal-clang/metalpot2.mp3",
+   "impact/metal-clang/metalpot3.mp3"
+  ],
+  "sources": [
+   "Kenney sci-fi-sounds",
+   "Kenney impact-sounds",
+   "Kenney rpg-audio"
+  ]
+ },
+ "impact/punch": {
+  "use_when": "someone or something gets hit, a fist fight, an NPC gets punched, a car hits a person",
+  "files": [
+   "impact/punch/impactpunch-heavy-000.mp3",
+   "impact/punch/impactpunch-heavy-001.mp3",
+   "impact/punch/impactpunch-heavy-002.mp3",
+   "impact/punch/impactpunch-heavy-003.mp3",
+   "impact/punch/impactpunch-heavy-004.mp3",
+   "impact/punch/impactpunch-medium-000.mp3",
+   "impact/punch/impactpunch-medium-001.mp3",
+   "impact/punch/impactpunch-medium-002.mp3",
+   "impact/punch/impactpunch-medium-003.mp3",
+   "impact/punch/impactpunch-medium-004.mp3"
+  ],
+  "sources": [
+   "Kenney impact-sounds"
+  ]
+ },
+ "impact/thud": {
+  "use_when": "a body falls, someone gets knocked down, a heavy landing, ragdoll physics",
+  "files": [
+   "impact/thud/chop.mp3",
+   "impact/thud/impactgeneric-light-000.mp3",
+   "impact/thud/impactgeneric-light-001.mp3",
+   "impact/thud/impactgeneric-light-002.mp3",
+   "impact/thud/impactgeneric-light-003.mp3",
+   "impact/thud/impactgeneric-light-004.mp3",
+   "impact/thud/impactmining-000.mp3",
+   "impact/thud/impactmining-001.mp3",
+   "impact/thud/impactmining-002.mp3",
+   "impact/thud/impactmining-003.mp3",
+   "impact/thud/impactmining-004.mp3",
+   "impact/thud/impactsoft-heavy-000.mp3",
+   "impact/thud/impactsoft-heavy-001.mp3",
+   "impact/thud/impactsoft-heavy-002.mp3",
+   "impact/thud/impactsoft-heavy-003.mp3",
+   "impact/thud/impactsoft-heavy-004.mp3",
+   "impact/thud/impactsoft-medium-000.mp3",
+   "impact/thud/impactsoft-medium-001.mp3",
+   "impact/thud/impactsoft-medium-002.mp3",
+   "impact/thud/impactsoft-medium-003.mp3",
+   "impact/thud/impactsoft-medium-004.mp3"
+  ],
+  "sources": [
+   "Kenney rpg-audio",
+   "Kenney impact-sounds"
+  ]
+ },
+ "impact/wood-knock": {
+  "use_when": "light comedic hit, something knocking or bonking, door bang",
+  "files": [
+   "impact/wood-knock/impactplank-medium-000.mp3",
+   "impact/wood-knock/impactplank-medium-001.mp3",
+   "impact/wood-knock/impactplank-medium-002.mp3",
+   "impact/wood-knock/impactplank-medium-003.mp3",
+   "impact/wood-knock/impactplank-medium-004.mp3",
+   "impact/wood-knock/impactwood-heavy-000.mp3",
+   "impact/wood-knock/impactwood-heavy-001.mp3",
+   "impact/wood-knock/impactwood-heavy-002.mp3",
+   "impact/wood-knock/impactwood-heavy-003.mp3",
+   "impact/wood-knock/impactwood-heavy-004.mp3",
+   "impact/wood-knock/impactwood-light-000.mp3",
+   "impact/wood-knock/impactwood-light-001.mp3",
+   "impact/wood-knock/impactwood-light-002.mp3",
+   "impact/wood-knock/impactwood-light-003.mp3",
+   "impact/wood-knock/impactwood-light-004.mp3",
+   "impact/wood-knock/impactwood-medium-000.mp3",
+   "impact/wood-knock/impactwood-medium-001.mp3",
+   "impact/wood-knock/impactwood-medium-002.mp3",
+   "impact/wood-knock/impactwood-medium-003.mp3",
+   "impact/wood-knock/impactwood-medium-004.mp3"
+  ],
+  "sources": [
+   "Kenney impact-sounds"
+  ]
+ },
+ "money/coins": {
+  "use_when": "money, robbing a store, a heist payout, buying something, getting rich",
+  "files": [
+   "money/coins/chip-lay-1.mp3",
+   "money/coins/chip-lay-2.mp3",
+   "money/coins/chip-lay-3.mp3",
+   "money/coins/chips-collide-1.mp3",
+   "money/coins/chips-collide-2.mp3",
+   "money/coins/chips-collide-3.mp3",
+   "money/coins/chips-collide-4.mp3",
+   "money/coins/chips-handle-1.mp3",
+   "money/coins/chips-handle-2.mp3",
+   "money/coins/chips-handle-3.mp3",
+   "money/coins/chips-handle-4.mp3",
+   "money/coins/chips-handle-5.mp3",
+   "money/coins/chips-handle-6.mp3",
+   "money/coins/chips-stack-1.mp3",
+   "money/coins/chips-stack-2.mp3",
+   "money/coins/chips-stack-3.mp3",
+   "money/coins/chips-stack-4.mp3",
+   "money/coins/chips-stack-5.mp3",
+   "money/coins/chips-stack-6.mp3",
+   "money/coins/handlecoins.mp3",
+   "money/coins/handlecoins2.mp3"
+  ],
+  "sources": [
+   "Kenney casino-audio",
+   "Kenney rpg-audio"
+  ]
+ },
+ "money/dice-roll": {
+  "use_when": "gambling, taking a risk, a casino, luck",
+  "files": [
+   "money/dice-roll/dice-grab-1.mp3",
+   "money/dice-roll/dice-grab-2.mp3",
+   "money/dice-roll/dice-shake-1.mp3",
+   "money/dice-roll/dice-shake-2.mp3",
+   "money/dice-roll/dice-shake-3.mp3",
+   "money/dice-roll/dice-throw-1.mp3",
+   "money/dice-roll/dice-throw-2.mp3",
+   "money/dice-roll/dice-throw-3.mp3",
+   "money/dice-roll/die-throw-1.mp3",
+   "money/dice-roll/die-throw-2.mp3",
+   "money/dice-roll/die-throw-3.mp3",
+   "money/dice-roll/die-throw-4.mp3"
+  ],
+  "sources": [
+   "Kenney casino-audio"
+  ]
+ },
+ "money/ding": {
+  "use_when": "a positive notification: correct, a lightbulb idea, something clicks",
+  "files": [
+   "money/ding/bong-001.mp3",
+   "money/ding/confirmation-001.mp3",
+   "money/ding/confirmation-002.mp3",
+   "money/ding/confirmation-003.mp3",
+   "money/ding/confirmation-004.mp3",
+   "money/ding/ding.mp3",
+   "money/ding/glass-001.mp3",
+   "money/ding/glass-002.mp3",
+   "money/ding/glass-003.mp3",
+   "money/ding/glass-004.mp3",
+   "money/ding/glass-005.mp3",
+   "money/ding/glass-006.mp3",
+   "money/ding/pluck-001.mp3",
+   "money/ding/pluck-002.mp3",
+   "money/ding/question-001.mp3",
+   "money/ding/question-002.mp3",
+   "money/ding/question-003.mp3",
+   "money/ding/question-004.mp3"
+  ],
+  "sources": [
+   "Kenney interface-sounds",
+   "synthesized (clip-watcher)"
+  ]
+ },
+ "money/pop": {
+  "use_when": "a small pop for something appearing",
+  "files": [
+   "money/pop/drop-001.mp3",
+   "money/pop/drop-002.mp3",
+   "money/pop/drop-003.mp3",
+   "money/pop/drop-004.mp3"
+  ],
+  "sources": [
+   "Kenney interface-sounds"
+  ]
+ },
+ "transition/glitch": {
+  "use_when": "a game glitch or bug, lag, the game breaking, a buggy NPC",
+  "files": [
+   "transition/glitch/computernoise-000.mp3",
+   "transition/glitch/computernoise-001.mp3",
+   "transition/glitch/computernoise-002.mp3",
+   "transition/glitch/computernoise-003.mp3",
+   "transition/glitch/glitch-001.mp3",
+   "transition/glitch/glitch-002.mp3",
+   "transition/glitch/glitch-003.mp3",
+   "transition/glitch/glitch-004.mp3",
+   "transition/glitch/glitch-stutter.mp3",
+   "transition/glitch/spacetrash1.mp3",
+   "transition/glitch/spacetrash2.mp3",
+   "transition/glitch/spacetrash3.mp3",
+   "transition/glitch/spacetrash4.mp3",
+   "transition/glitch/spacetrash5.mp3"
+  ],
+  "sources": [
+   "Kenney sci-fi-sounds",
+   "Kenney interface-sounds",
+   "synthesized (clip-watcher)",
+   "Kenney digital-audio"
+  ]
+ },
+ "transition/scratch": {
+  "use_when": "a quick scratch or rewind",
+  "files": [
+   "transition/scratch/scratch-001.mp3",
+   "transition/scratch/scratch-002.mp3",
+   "transition/scratch/scratch-003.mp3",
+   "transition/scratch/scratch-004.mp3",
+   "transition/scratch/scratch-005.mp3"
+  ],
+  "sources": [
+   "Kenney interface-sounds"
+  ]
+ },
+ "transition/warp": {
+  "use_when": "a strange or supernatural moment, a weird effect",
+  "files": [
+   "transition/warp/forcefield-000.mp3",
+   "transition/warp/forcefield-001.mp3",
+   "transition/warp/forcefield-002.mp3",
+   "transition/warp/forcefield-003.mp3",
+   "transition/warp/forcefield-004.mp3"
+  ],
+  "sources": [
+   "Kenney sci-fi-sounds"
+  ]
+ },
+ "transition/whoosh": {
+  "use_when": "fast cut, a meme cutaway, something flying past",
+  "files": [
+   "transition/whoosh/whoosh-fast.mp3",
+   "transition/whoosh/whoosh-slow.mp3"
+  ],
+  "sources": [
+   "synthesized (clip-watcher)"
+  ]
+ },
+ "transition/zap": {
+  "use_when": "sci-fi zap: something weird, a teleport, a glitchy physics moment",
+  "files": [
+   "transition/zap/laser1.mp3",
+   "transition/zap/laser2.mp3",
+   "transition/zap/laser3.mp3",
+   "transition/zap/laser4.mp3",
+   "transition/zap/laser5.mp3",
+   "transition/zap/laser6.mp3",
+   "transition/zap/laser7.mp3",
+   "transition/zap/laser8.mp3",
+   "transition/zap/laser9.mp3",
+   "transition/zap/laserlarge-000.mp3",
+   "transition/zap/laserlarge-001.mp3",
+   "transition/zap/laserlarge-002.mp3",
+   "transition/zap/laserlarge-003.mp3",
+   "transition/zap/laserlarge-004.mp3",
+   "transition/zap/laserretro-000.mp3",
+   "transition/zap/laserretro-001.mp3",
+   "transition/zap/laserretro-002.mp3",
+   "transition/zap/laserretro-003.mp3",
+   "transition/zap/laserretro-004.mp3",
+   "transition/zap/lasersmall-000.mp3",
+   "transition/zap/lasersmall-001.mp3",
+   "transition/zap/lasersmall-002.mp3",
+   "transition/zap/lasersmall-003.mp3",
+   "transition/zap/lasersmall-004.mp3",
+   "transition/zap/zaptwotone.mp3",
+   "transition/zap/zaptwotone2.mp3"
+  ],
+  "sources": [
+   "Kenney digital-audio",
+   "Kenney sci-fi-sounds"
+  ]
+ },
+ "win/congratulations": {
+  "use_when": "'CONGRATULATIONS': sarcastic or real congratulations",
+  "files": [
+   "win/congratulations/congratulations-female.mp3",
+   "win/congratulations/congratulations-male.mp3"
+  ],
+  "sources": [
+   "Kenney voiceover-pack"
+  ]
+ },
+ "win/correct": {
+  "use_when": "'CORRECT': guessing right, being right",
+  "files": [
+   "win/correct/correct-female.mp3",
+   "win/correct/correct-male.mp3"
+  ],
+  "sources": [
+   "Kenney voiceover-pack"
+  ]
+ },
+ "win/flawless-victory": {
+  "use_when": "'FLAWLESS VICTORY': a clean win, an epic play, outsmarting someone",
+  "files": [
+   "win/flawless-victory/flawless-victory-fighter.mp3"
+  ],
+  "sources": [
+   "Kenney voiceover-pack-fighter"
+  ]
+ },
+ "win/jingle-victory": {
+  "use_when": "a short victory jingle at the end of a win",
+  "files": [
+   "win/jingle-victory/jingles-hit00.mp3",
+   "win/jingle-victory/jingles-hit01.mp3",
+   "win/jingle-victory/jingles-hit02.mp3",
+   "win/jingle-victory/jingles-hit03.mp3",
+   "win/jingle-victory/jingles-hit04.mp3",
+   "win/jingle-victory/jingles-hit05.mp3",
+   "win/jingle-victory/jingles-hit06.mp3",
+   "win/jingle-victory/jingles-hit07.mp3",
+   "win/jingle-victory/jingles-hit08.mp3",
+   "win/jingle-victory/jingles-hit09.mp3",
+   "win/jingle-victory/jingles-hit10.mp3",
+   "win/jingle-victory/jingles-hit11.mp3",
+   "win/jingle-victory/jingles-hit12.mp3",
+   "win/jingle-victory/jingles-hit13.mp3",
+   "win/jingle-victory/jingles-hit14.mp3",
+   "win/jingle-victory/jingles-hit15.mp3",
+   "win/jingle-victory/jingles-hit16.mp3"
+  ],
+  "sources": [
+   "Kenney music-jingles"
+  ]
+ },
+ "win/level-up": {
+  "use_when": "'LEVEL UP': improvement, a rank up, a glow-up",
+  "files": [
+   "win/level-up/level-up-female.mp3",
+   "win/level-up/level-up-male.mp3"
+  ],
+  "sources": [
+   "Kenney voiceover-pack"
+  ]
+ },
+ "win/mission-completed": {
+  "use_when": "'MISSION COMPLETED': pulling off a heist or plan perfectly",
+  "files": [
+   "win/mission-completed/mission-completed-female.mp3",
+   "win/mission-completed/mission-completed-male.mp3"
+  ],
+  "sources": [
+   "Kenney voiceover-pack"
+  ]
+ },
+ "win/new-highscore": {
+  "use_when": "'NEW HIGHSCORE': breaking a record, a crazy stunt",
+  "files": [
+   "win/new-highscore/new-highscore-female.mp3",
+   "win/new-highscore/new-highscore-male.mp3"
+  ],
+  "sources": [
+   "Kenney voiceover-pack"
+  ]
+ },
+ "win/objective-achieved": {
+  "use_when": "'OBJECTIVE ACHIEVED': got what they wanted",
+  "files": [
+   "win/objective-achieved/objective-achieved-female.mp3",
+   "win/objective-achieved/objective-achieved-male.mp3"
+  ],
+  "sources": [
+   "Kenney voiceover-pack"
+  ]
+ },
+ "win/power-up": {
+  "use_when": "a glow-up, getting something good, leveling up, a lucky moment",
+  "files": [
+   "win/power-up/highup.mp3",
+   "win/power-up/phaserup1.mp3",
+   "win/power-up/phaserup2.mp3",
+   "win/power-up/phaserup3.mp3",
+   "win/power-up/phaserup4.mp3",
+   "win/power-up/phaserup5.mp3",
+   "win/power-up/phaserup6.mp3",
+   "win/power-up/phaserup7.mp3",
+   "win/power-up/powerup1.mp3",
+   "win/power-up/powerup10.mp3",
+   "win/power-up/powerup11.mp3",
+   "win/power-up/powerup12.mp3",
+   "win/power-up/powerup2.mp3",
+   "win/power-up/powerup3.mp3",
+   "win/power-up/powerup4.mp3",
+   "win/power-up/powerup5.mp3",
+   "win/power-up/powerup6.mp3",
+   "win/power-up/powerup7.mp3",
+   "win/power-up/powerup8.mp3",
+   "win/power-up/powerup9.mp3",
+   "win/power-up/threetone1.mp3",
+   "win/power-up/threetone2.mp3",
+   "win/power-up/twotone1.mp3",
+   "win/power-up/twotone2.mp3",
+   "win/power-up/zapthreetoneup.mp3"
+  ],
+  "sources": [
+   "Kenney digital-audio"
+  ]
+ },
+ "win/winner": {
+  "use_when": "'WINNER': an obvious win, a flex",
+  "files": [
+   "win/winner/winner-fighter.mp3"
+  ],
+  "sources": [
+   "Kenney voiceover-pack-fighter"
+  ]
+ },
+ "win/you-win": {
+  "use_when": "'YOU WIN': winning a fight, race or argument",
+  "files": [
+   "win/you-win/you-win-female.mp3",
+   "win/you-win/you-win-fighter.mp3",
+   "win/you-win/you-win-male.mp3"
+  ],
+  "sources": [
+   "Kenney voiceover-pack",
+   "Kenney voiceover-pack-fighter"
+  ]
+ }
+}
