@@ -131,7 +131,7 @@ def has_audio(media_path):
 
 
 def mix_audio(video_path, output_path, sound_events, music_path=None, normalize=True):
-    """Mix sound_events [(sound_path, at_s, volume)] and ducked music into the clip's audio,
+    """Mix sound_events [(sound_path, at_s, volume[, max_duration_s])] and ducked music into the clip's audio,
     level it to LOUDNESS_LUFS (if normalize), write output_path (video copied). Returns success.
     Sound files may be videos (a sticker meme's audio): their audio stream is used."""
     duration_s = media_duration_s(video_path)
@@ -144,11 +144,13 @@ def mix_audio(video_path, output_path, sound_events, music_path=None, normalize=
     first_extra_input = 2 if voice_source == "[1:a]" else 1
     graph = [f"{voice_source}aresample=48000,aformat=channel_layouts=stereo,asplit=2[voice][voice_key]"]
     mix_inputs = ["[voice]"]
-    for offset, (sound_path, at_s, volume) in enumerate(sound_events):
+    for offset, event in enumerate(sound_events):
+        sound_path, at_s, volume = event[:3]
+        trim = f"atrim=0:{event[3]:.2f}," if len(event) > 3 and event[3] else ""  # optional max duration
         command += ["-i", sound_path]
         delay_ms = max(0, int(at_s * 1000))
         label = f"[sfx{offset}]"
-        graph.append(f"[{first_extra_input + offset}:a]aresample=48000,aformat=channel_layouts=stereo,"
+        graph.append(f"[{first_extra_input + offset}:a]{trim}aresample=48000,aformat=channel_layouts=stereo,"
                      f"volume={volume},adelay={delay_ms}|{delay_ms}{label}")
         mix_inputs.append(label)
     if music_path:
