@@ -87,15 +87,20 @@ def ass_time(seconds):
             f"{centiseconds // 100 % 60:02}.{centiseconds % 100:02}")
 
 
-def hook_markup(hook, emphasis, max_line_chars=18):
-    """Wrapped hook lines (max 3) with the emphasised word in red."""
-    lines = textwrap.wrap(hook, max_line_chars)[:3]
+def hook_markup(hook, emphasis, max_line_chars=18, max_lines=3):
+    """Wrapped hook lines with the emphasised word in red. A hook that needs more than
+    max_lines is wrapped wider and drawn smaller, never cut off."""
+    lines = textwrap.wrap(hook, max_line_chars)
+    shrink = ""
+    if len(lines) > max_lines:
+        lines = textwrap.wrap(hook, int(max_line_chars * 1.4))
+        shrink = "{\\fscx78\\fscy78}"
     marked = []
     for line in lines:
         words = [f"{{\\c{RED}&}}{word}{{\\c{BLACK}&}}" if emphasis and word.strip("!?.,") == emphasis else word
                  for word in line.split(" ")]
         marked.append(" ".join(words))
-    return "\\N".join(marked)
+    return shrink + "\\N".join(marked)
 
 
 def write_ass(ass_path, chunks, hook, width=1080, height=1920, emphasis="", seam_y=None, peak_s=None,

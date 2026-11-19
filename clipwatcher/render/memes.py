@@ -62,6 +62,7 @@ def meme_menu():
 
 
 KEYABLE_BORDER_SHARE = 0.6   # this much of the frame border one flat colour = a keyable background
+BLACK_OVERLAY_SHARE = 0.8    # this much of the whole frame black = a black-background overlay
 
 
 def frame_pixels(file_path, at_s=0.5, size=32):
@@ -81,12 +82,13 @@ def background_key_color(file_path):
     border = [pixels[row * size + column] for row in range(size) for column in range(size)
               if row in (0, 1, size - 2, size - 1) or column in (0, 1, size - 2, size - 1)]
     green = [pixel for pixel in border if pixel[1] > 110 and pixel[1] > pixel[0] + 40 and pixel[1] > pixel[2] + 40]
-    black = [pixel for pixel in border if max(pixel) < 30]
-    for candidates in (green, black):
-        if len(candidates) / len(border) >= KEYABLE_BORDER_SHARE:
-            red, green_value, blue = (sum(channel) // len(candidates) for channel in zip(*candidates))
-            return f"0x{red:02x}{green_value:02x}{blue:02x}"
-    return None
+    if len(green) / len(border) >= KEYABLE_BORDER_SHARE:
+        red, green_value, blue = (sum(channel) // len(green) for channel in zip(*green))
+        return f"0x{red:02x}{green_value:02x}{blue:02x}"
+    # black: only a real overlay (GTA "wasted" text on black) is almost entirely black;
+    # a normal video with black bars (pillarbox/letterbox) is not
+    dark_share = sum(1 for pixel in pixels if max(pixel) < 30) / len(pixels)
+    return "0x000000" if dark_share >= BLACK_OVERLAY_SHARE else None
 
 
 def meme_key_color(name):
@@ -103,6 +105,26 @@ def meme_key_color(name):
 def meme_path(name):
     path = os.path.join(paths.MEMES_DIR, name or "")
     return path if name and os.path.isfile(path) else None
+
+
+def black_bar_crop(video_path):
+    """ffmpeg crop filter that removes built-in black bars (pillarbox/letterbox), or "".
+    Without this a meme with bars shows up tiny when it's cut in."""
+    output = subprocess.run(["ffmpeg", "-hide_banner", "-i", video_path, "-vf", "cropdetect=24:2:0",
+                             "-frames:v", "30", "-f", "null", "-"], capture_output=True, text=True, errors="replace").stderr
+    crops = re.findall(r"crop=(\d+):(\d+):(\d+):(\d+)", output)
+    if not crops:
+        return ""
+    width, height, x, y = (int(value) for value in crops[-1])
+    probe = subprocess.run(["ffprobe", "-v", "error", "-select_streams", "v:0", "-show_entries", "stream=width,height",
+                            "-of", "csv=p=0", video_path], capture_output=True, text=True, errors="replace").stdout
+    try:
+        full_width, full_height = (int(value) for value in probe.strip().split(",")[:2])
+    except ValueError:
+        return ""
+    if width * height >= full_width * full_height * 0.92 or width < 64 or height < 64:
+        return ""  # no real bars, or cropdetect got confused by a dark scene
+    return f"crop={width}:{height}:{x}:{y},"
 
 
 def slugify(text):
@@ -155,8 +177,9 @@ def add_meme(source, name=None, start_s=None, end_s=None, use_when=None):
             trim += ["-ss", str(start_s)]
         length_s = min(MAX_MEME_S, (end_s - (start_s or 0)) if end_s is not None else MAX_MEME_S)
         normalized = os.path.join(work_dir, "meme.mp4")
+        crop = black_bar_crop(source_path)
         result = subprocess.run(["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", *trim, "-i", source_path,
-                                 "-t", f"{length_s:.2f}", "-vf", "scale='min(1080,iw)':-2,fps=30,format=yuv420p",
+                                 "-t", f"{length_s:.2f}", "-vf", f"{crop}scale='min(1080,iw)':-2,fps=30,format=yuv420p",
                                  "-c:v", "libx264", "-preset", "veryfast", "-crf", "20",
                                  "-c:a", "aac", "-b:a", "160k", "-ar", "48000", "-ac", "2", normalized])
         if result.returncode != 0:
