@@ -35,39 +35,45 @@ class CopywritingTest(unittest.TestCase):
 
     def test_fallback_names_creator_and_game_without_gibberish(self):
         with mock.patch.object(settings, "GEMINI_API_KEY", ""):
-            copy = copywriting.write_copy("1 and time 4 and am ago", self.stream_info)
+            copy = copywriting.write_copy({"text": "1 and time 4 and am ago"}, self.stream_info)
         self.assertIn("GTA 6", copy.hook + " " + copy.title)
         self.assertNotIn("AGO", copy.hook)
 
     def test_fallback_is_stable_across_templates(self):
         with mock.patch.object(settings, "GEMINI_API_KEY", ""):
             for _attempt in range(20):
-                copy = copywriting.write_copy("", self.stream_info)
+                copy = copywriting.write_copy({"text": ""}, self.stream_info)
                 self.assertIn("KAI CENAT", copy.title.upper())
                 self.assertTrue(copy.comment)
 
     def test_gemini_reply_is_validated_against_menus(self):
         reply = {"hook": "Kai Cenat got PRESSED by an NPC in GTA 6 😭", "emphasis": "pressed",
-                 "title": "Kai Cenat got PRESSED by an NPC in GTA 6 😭", "peak_sound": "impact/punch",
-                 "reaction_sound": "fail/made-up", "emoji": "skull", "meme": "not-there.mp4",
-                 "comment": "Would you fight back? 😭"}
+                 "title": "Kai Cenat got PRESSED by an NPC in GTA 6 😭", "comment": "Would you fight back? 😭",
+                 "beats": [{"at": 2.0, "kind": "sound", "value": "impact/punch"},
+                           {"at": 2.0, "kind": "emoji", "value": "skull"},
+                           {"at": 0.4, "kind": "text_card", "value": "too early"},     # cutaway in the first second
+                           {"at": 5.0, "kind": "meme", "value": "not-there.mp4"},
+                           {"at": 6.0, "kind": "sound", "value": "fail/made-up"}]}
         menu = {"impact/punch": "someone gets hit", "fail/mission-failed": "dies"}
+        transcript = {"text": "bro the npc", "segments": [{"words": [{"word": " bro", "start": 1.9, "end": 2.1}]}]}
         with mock.patch.object(settings, "GEMINI_API_KEY", "key"), \
                 mock.patch.object(copywriting, "ask_gemini_json", return_value=reply) as ask:
-            copy = copywriting.write_copy("bro the npc", self.stream_info, sound_menu=menu,
-                                          emoji_names=["skull", "fire"], meme_names=["shocked.mp4"])
+            copy = copywriting.write_copy(transcript, self.stream_info, length_s=15, peak_s=2.0, sound_menu=menu,
+                                          emoji_names=["skull", "fire"], meme_menu={"shocked.mp4": "shock"})
         self.assertEqual(copy.hook, "KAI CENAT GOT PRESSED BY AN NPC IN GTA 6")  # emoji stripped
         self.assertEqual(copy.emphasis, "PRESSED")
-        self.assertEqual((copy.peak_sound, copy.reaction_sound), ("impact/punch", ""))  # invented -> dropped
-        self.assertEqual((copy.emoji, copy.meme), ("skull", ""))
+        self.assertEqual([(beat.kind, beat.value) for beat in copy.beats],
+                         [("sound", "impact/punch"), ("emoji", "skull")])  # invented / too early dropped
         self.assertEqual(copy.comment, "Would you fight back? 😭")
         prompt = ask.call_args[0][0]
-        self.assertIn("fail/mission-failed: dies", prompt)  # Gemini sees the whole menu
+        self.assertIn("fail/mission-failed: dies", prompt)  # Gemini sees the whole sound menu
+        self.assertIn("shocked.mp4: shock", prompt)         # ...and the meme menu
+        self.assertIn("[1.9] bro", prompt)                   # ...and word timings
 
     def test_bad_gemini_hook_falls_back(self):
         with mock.patch.object(settings, "GEMINI_API_KEY", "key"), \
                 mock.patch.object(copywriting, "ask_gemini_json", return_value={"hook": "LOL"}):
-            copy = copywriting.write_copy("text", self.stream_info)
+            copy = copywriting.write_copy({"text": "text"}, self.stream_info)
         self.assertGreaterEqual(len(copy.hook.split()), 3)
 
 
@@ -105,3 +111,20 @@ class FreshnessRankingTest(unittest.TestCase):
         manual_old = {"score": 10 ** 6, "created_ts": now_ts - 48 * 3600}
         ranked = sorted([old_big, fresh, manual_old], key=lambda item: ranking_value(item, now_ts), reverse=True)
         self.assertEqual(ranked, [manual_old, fresh, old_big])
+
+
+class BeatValidationTest(unittest.TestCase):
+    def test_validation_and_limits(self):
+        from clipwatcher.render.beats import validate_beats
+        raw = [{"at": 1.0, "kind": "sound", "value": "impact/punch"},
+               {"at": 1.1, "kind": "sound", "value": "impact/punch"},          # too close to the same kind
+               {"at": 2.0, "kind": "text_card", "value": "nobody cares"},
+               {"at": 2.5, "kind": "meme", "value": "a.mp4"},                   # cutaway too close
+               {"at": 4.0, "kind": "meme", "value": "invented.mp4"},            # not in the menu
+               {"at": 30.0, "kind": "zoom"},                                    # outside the clip
+               {"at": "x", "kind": "zoom"}, {"kind": "teleport", "at": 3}, "garbage",
+               {"at": 5.0, "kind": "emoji", "value": "skull", "duration": 99}]  # duration capped
+        beats = validate_beats(raw, 15.0, {"impact/punch": "hit"}, ["skull"], {"a.mp4": "x"})
+        self.assertEqual([(beat.at_s, beat.kind) for beat in beats],
+                         [(1.0, "sound"), (2.0, "text_card"), (5.0, "emoji")])
+        self.assertEqual(beats[-1].duration_s, 2.5)

@@ -1,12 +1,12 @@
 """Turn one raw 9:16 search-window clip into a post-ready Short, then queue or post it.
 
     raw window -> find the loudest moment (moment_finder) -> choose a LENGTH-second window
-    ending AFTER_PEAK seconds after it -> Whisper on that window -> Gemini WATCHES frames
-    around the peak and picks hook/title/sounds/emoji/meme/comment from the full kit
-    (copywriting) -> one video pass: trim + colour + zoom/shake/flash + emoji pop-up on the
-    peak + hook box + captions + source credit (video_effects) -> optional meme cutaway ->
-    sound design: chosen sound on the peak, reaction sound after it, whoosh into the meme,
-    ducked music, -14 LUFS (sound_design) -> clips/ready/<name>.mp4
+    ending AFTER_PEAK seconds after it -> Whisper on that window -> Gemini WATCHES a frame grid
+    + timed transcript and writes hook/title/comment and a BEAT SHEET from the full kit
+    (copywriting, beats) -> 1. one video pass: trim + colour + zoom/shake/flash at zoom beats
+    + emoji/sticker beats + hook box + captions + credit (video_effects) -> 2. sound beats
+    mixed in (sound_design) -> 3. cutaways (text cards, memes) spliced in, last first
+    -> 4. ducked music + -14 LUFS -> clips/ready/<name>.mp4
     -> caption .txt -> optional Drive sync -> clips/queue/<name>.json or post right now
 
 Queue item format (clips/queue/<clip>.json). These keys are stored on disk, so never
@@ -26,7 +26,9 @@ rename them; add new keys instead:
 """
 import json
 import os
+import random
 import re
+import shutil
 import subprocess
 import time
 from dataclasses import dataclass, field
@@ -34,15 +36,18 @@ from dataclasses import dataclass, field
 from clipwatcher import paths, settings
 from clipwatcher.log import log
 from clipwatcher.render import moment_finder, sound_design
+from clipwatcher.render import memes
+from clipwatcher.render.beats import Beat, fallback_beats
 from clipwatcher.render.copywriting import describe, write_copy
 from clipwatcher.render.emojis import emoji_path, list_emojis
-from clipwatcher.render.memes import list_memes, pick_meme
+from clipwatcher.render.memes import meme_path
 from clipwatcher.render.subtitles import caption_chunks, write_srt
+from clipwatcher.render.text_cards import make_text_card
 from clipwatcher.render.transcriber import transcribe_window
-from clipwatcher.render.video_effects import edit_video, insert_meme
+from clipwatcher.render.video_effects import edit_video, insert_cutaway
 
 MEME_DELAY_AFTER_PEAK_S = 0.6
-REACTION_DELAY_AFTER_PEAK_S = 0.5
+PEAK_SYNC_TOLERANCE_S = 0.6        # a beat this close to the peak counts as "on the peak"
 FALLBACK_PEAK_BEFORE_SPIKE_S = 3   # no audio: assume the moment was 3 s before chat reacted
 
 
@@ -103,6 +108,36 @@ def remove_quietly(*file_paths):
             os.remove(file_path)
 
 
+def complete_beats(copy, timing, transcript_text, meme_menu):
+    """Gemini's beat sheet (or the single-peak fallback), always with a zoom and a sound on
+    the peak. Without Gemini a meme may follow the peak when its description matches."""
+    beats = list(copy.beats) if copy.beats else fallback_beats(timing.onset_s, timing.peak_s, emoji=copy.emoji)
+    near_peak = [beat for beat in beats if abs(beat.at_s - timing.onset_s) <= PEAK_SYNC_TOLERANCE_S]
+    if not any(beat.kind == "zoom" for beat in near_peak):
+        beats.append(Beat(at_s=timing.onset_s, kind="zoom"))
+    if not any(beat.kind == "sound" for beat in near_peak):
+        beats.append(Beat(at_s=timing.onset_s, kind="sound"))  # "" -> keyword pick / boom
+    if not copy.beats and meme_menu and random.random() <= settings.MEME_CHANCE:
+        meme_name = sound_design.best_category_by_keywords(transcript_text, meme_menu)
+        if meme_name:
+            beats.append(Beat(at_s=min(timing.peak_s + MEME_DELAY_AFTER_PEAK_S, max(1.0, timing.length_s - 0.5)),
+                              kind="meme", value=meme_name, duration_s=settings.MEME_SECONDS))
+    return sorted(beats, key=lambda beat: beat.at_s)
+
+
+def render_cutaway(beat, work_path):
+    """(file, duration_s) for a text card or meme beat, or (None, 0) if it can't be made."""
+    if beat.kind == "text_card":
+        sound_path = sound_design.resolve_sound(beat.sound) if beat.sound else None
+        if make_text_card(beat.value, work_path, beat.duration_s, sound_path):
+            return work_path, beat.duration_s
+        return None, 0.0
+    file_path = meme_path(beat.value)
+    if not file_path:
+        return None, 0.0
+    return file_path, min(beat.duration_s or settings.MEME_SECONDS, sound_design.media_duration_s(file_path))
+
+
 def process_clip(job):
     """Render `job`. Returns the queue item dict, or None if rendering failed."""
     from clipwatcher.publish.post_text import build_caption, creator_display_name
@@ -117,43 +152,66 @@ def process_clip(job):
     transcript = transcribe_window(job.raw_path, job.whisper_model, timing.start_s, timing.length_s, vocabulary)
     transcript_text = (transcript.get("text") or "").strip()
     write_srt(transcript, os.path.join(paths.READY_CLIPS_DIR, job.clip_name + ".srt"))
-    copy = write_copy(transcript_text, job.stream_info, video_path=job.raw_path,
-                      peak_s=timing.start_s + timing.peak_s, length_s=timing.length_s,
-                      sound_menu=sound_design.load_sound_menu(), emoji_names=list_emojis(),
-                      meme_names=list_memes())
+    meme_menu = memes.meme_menu()
+    copy = write_copy(transcript, job.stream_info, video_path=job.raw_path, start_s=timing.start_s,
+                      length_s=timing.length_s, peak_s=timing.peak_s, sound_menu=sound_design.load_sound_menu(),
+                      emoji_names=list_emojis(), meme_menu=meme_menu)
+    beats = complete_beats(copy, timing, transcript_text, meme_menu)
     log(f"{job.clip_name}: {describe(copy)}")
+    log(f"{job.clip_name}: beats " + ", ".join(f"{beat.at_s:.1f}s {beat.kind} {beat.value}".strip() for beat in beats))
 
     final_path = os.path.join(paths.READY_CLIPS_DIR, job.clip_name + ".mp4")
-    edited_path = final_path + ".edit.mp4"
-    meme_path = final_path + ".meme.mp4"
-    if not edit_video(job.raw_path, edited_path, timing.start_s, timing.length_s, caption_chunks(transcript),
-                      copy.hook, copy.emphasis, job.seam_y, timing.peak_s, timing.onset_s,
-                      emoji_file=emoji_path(copy.emoji), credit=source_credit(job.source_url)):
+    work_prefix = final_path + ".work"
+    temporary_files = []
+
+    # 1. picture: trim + effects at every zoom beat + emoji/sticker overlays + text
+    overlays = []
+    for beat in beats:
+        overlay_file = emoji_path(beat.value) if beat.kind == "emoji" else (
+            meme_path(beat.value) if beat.kind == "sticker" else None)
+        if overlay_file:
+            overlays.append((beat.kind, overlay_file, beat.at_s, beat.duration_s or 1.6))
+    current_path = f"{work_prefix}.edit.mp4"
+    temporary_files.append(current_path)
+    if not edit_video(job.raw_path, current_path, timing.start_s, timing.length_s, caption_chunks(transcript),
+                      copy.hook, copy.emphasis, job.seam_y, timing.peak_s,
+                      zoom_times_s=[beat.at_s for beat in beats if beat.kind == "zoom"], overlays=overlays,
+                      credit=source_credit(job.source_url)):
         log(f"video edit failed for {job.clip_name}; keeping raw clip only")
-        remove_quietly(edited_path)
+        remove_quietly(*temporary_files)
         return None
 
-    sound_events = [(sound_design.resolve_sound(copy.peak_sound, transcript_text), timing.onset_s,
-                     settings.SFX_VOLUME)]
-    meme_name = pick_meme(copy.meme, transcript_text)
-    if meme_name:
-        meme_at_s = min(timing.peak_s + MEME_DELAY_AFTER_PEAK_S, max(0.5, timing.length_s - 0.5))
-        if insert_meme(edited_path, meme_name, meme_at_s, meme_path):
-            os.replace(meme_path, edited_path)
-            sound_events.append((sound_design.whoosh_sound(), max(0.0, meme_at_s - sound_design.WHOOSH_LEAD_S), 0.7))
-            log(f"meme cutaway: {meme_name}")
-        else:
-            log(f"meme insert failed ({meme_name}) - posting without it")
-            remove_quietly(meme_path)
-            meme_name = None
-    if copy.reaction_sound and not meme_name:  # a meme already has its own reaction audio
-        sound_events.append((sound_design.resolve_sound(copy.reaction_sound),
-                             min(timing.peak_s + REACTION_DELAY_AFTER_PEAK_S, max(0.0, timing.length_s - 1.0)),
-                             settings.SFX_VOLUME * 0.85))
+    # 2. sound beats (+ sticker audio), on the clip's own timeline
+    sound_events = [(sound_design.resolve_sound(beat.value, transcript_text), beat.at_s, settings.SFX_VOLUME)
+                    for beat in beats if beat.kind == "sound"]
+    sound_events += [(file_path, at_s, 0.8) for kind, file_path, at_s, _duration in overlays
+                     if kind == "sticker" and sound_design.has_audio(file_path)]
+    with_sounds_path = f"{work_prefix}.sfx.mp4"
+    temporary_files.append(with_sounds_path)
+    if sound_events and sound_design.mix_audio(current_path, with_sounds_path, sound_events, normalize=False):
+        current_path = with_sounds_path
 
-    if not sound_design.mix_audio(edited_path, final_path, sound_events, sound_design.pick_music()):
-        os.replace(edited_path, final_path)  # still a good clip, just without the sound design
-    remove_quietly(edited_path, job.raw_path)  # the finished clip replaces the raw cut
+    # 3. cutaways, last first, so earlier beat times stay valid
+    for index, beat in enumerate(sorted((beat for beat in beats if beat.is_cutaway),
+                                        key=lambda beat: beat.at_s, reverse=True)):
+        cutaway_file, duration_s = render_cutaway(beat, f"{work_prefix}.card{index}.mp4")
+        if beat.kind == "text_card" and cutaway_file:
+            temporary_files.append(cutaway_file)
+        if not cutaway_file or duration_s < 0.3:
+            continue
+        spliced_path = f"{work_prefix}.cut{index}.mp4"
+        temporary_files.append(spliced_path)
+        if insert_cutaway(current_path, cutaway_file, beat.at_s, duration_s, spliced_path):
+            current_path = spliced_path
+        else:
+            log(f"{beat.kind} cutaway failed ({beat.value}) - skipped")
+
+    # 4. music under everything + final loudness
+    if sound_design.mix_audio(current_path, final_path, [], sound_design.pick_music()):
+        sound_design.correct_loudness(final_path)
+    else:
+        shutil.copyfile(current_path, final_path)  # still a good clip, just not loudness-levelled
+    remove_quietly(*temporary_files, job.raw_path)  # the finished clip replaces the raw cut
 
     caption = build_caption(copy.hook, job.source_url, job.hashtags, job.stream_info, title=copy.title)
     with open(os.path.join(paths.READY_CLIPS_DIR, job.clip_name + ".txt"), "w", encoding="utf-8") as caption_file:

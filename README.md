@@ -87,7 +87,8 @@ Each channel is watched in parallel and all clips go into one queue. A 2-CPU ser
 - **On the peak:** zoom punch, camera shake, white flash, an animated emoji (😭 💀 😳…) and a sound that fits the moment.
 - **Sound kit:** 443 CC0 sounds in `assets/sound_kit/`, grouped by when to use them: impact, fail ("mission failed", sad trombone), win, hype (airhorn, "fight!"), danger (siren), comedy (record scratch, sexy sax), transition and money. Add your own in `sounds/sfx/`, plus music in `sounds/music/` (ducked under the voice). Final loudness is −14 LUFS.
 - **Gemini watches every clip** (frames + transcript) and picks the hook, title, peak sound, reaction sound, emoji, meme and a first comment from the whole kit. Add `GEMINI_API_KEY='...'` to `config.txt` (free at https://aistudio.google.com/apikey). It's the single biggest quality jump. Without it, clean templates are used. Never commit the key.
-- **Memes:** short reaction videos in `memes/` (see [memes/README.md](memes/README.md)), used only when one clearly fits.
+- **Beat sheet (meme-dense edits):** Gemini plans 4–10 beats across each clip, every one synced to a word or action: sound hits, emoji pops, zooms, white text cards ("nobody cares", "he's cooked"), reaction-meme cutaways and stickers.
+- **Meme library:** `python3 -m clipwatcher add-meme <file or URL>` trims and normalizes a clip, and Gemini describes when to use it. The library stays private in `memes/` (see [memes/README.md](memes/README.md)).
 - **Credit:** "SOURCE: TWITCH.TV/XQC" in the corner (clipping campaigns require one).
 - **Re-render old clips** in the current style: `sudo systemctl stop clip-watcher && .venv/bin/python -m clipwatcher rerender && sudo systemctl start clip-watcher`
 - **Rebuild the kit:** `python3 -m clipwatcher build-kit`

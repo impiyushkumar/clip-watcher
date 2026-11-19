@@ -118,9 +118,10 @@ def has_audio(media_path):
     return probe.stdout.strip() != ""
 
 
-def mix_audio(video_path, output_path, sound_events, music_path=None):
+def mix_audio(video_path, output_path, sound_events, music_path=None, normalize=True):
     """Mix sound_events [(sound_path, at_s, volume)] and ducked music into the clip's audio,
-    level it to LOUDNESS_LUFS, and write output_path (video stream copied). Returns success."""
+    level it to LOUDNESS_LUFS (if normalize), write output_path (video copied). Returns success.
+    Sound files may be videos (a sticker meme's audio): their audio stream is used."""
     duration_s = media_duration_s(video_path)
     command = ["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-i", video_path]
     if has_audio(video_path):
@@ -149,11 +150,37 @@ def mix_audio(video_path, output_path, sound_events, music_path=None):
         mix_inputs.append("[music]")
     else:
         graph.append("[voice_key]anullsink")
-    graph.append(f"{''.join(mix_inputs)}amix=inputs={len(mix_inputs)}:duration=first:normalize=0,"
-                 f"loudnorm=I={settings.LOUDNESS_LUFS}:TP=-1.5:LRA=11,aresample=48000[audio]")
+    loudness = f",loudnorm=I={settings.LOUDNESS_LUFS}:TP=-1.5:LRA=11" if normalize else ""
+    graph.append(f"{''.join(mix_inputs)}amix=inputs={len(mix_inputs)}:duration=first:normalize=0"
+                 f"{loudness},aresample=48000[audio]")
     command += ["-filter_complex", ";".join(graph), "-map", "0:v", "-map", "[audio]",
                 "-c:v", "copy", "-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart", output_path]
     result = subprocess.run(command, capture_output=True, text=True)
     if result.returncode != 0:
         log(f"audio mix failed: {result.stderr.strip()[-300:]}")
     return result.returncode == 0
+
+
+def integrated_loudness(media_path):
+    """Measured loudness in LUFS (EBU R128), or None."""
+    output = subprocess.run(["ffmpeg", "-hide_banner", "-i", media_path, "-af", "ebur128", "-f", "null", "-"],
+                            capture_output=True, text=True).stderr
+    match = re.findall(r"I:\s+(-?[\d.]+) LUFS", output)
+    return float(match[-1]) if match else None
+
+
+def correct_loudness(media_path, tolerance_db=1.0):
+    """loudnorm's single pass undershoots on short, spiky meme edits: measure the result and
+    apply the remaining gain (video copied, limited so peaks don't clip)."""
+    measured = integrated_loudness(media_path)
+    if measured is None or measured < -60 or abs(measured - settings.LOUDNESS_LUFS) <= tolerance_db:
+        return
+    gain_db = settings.LOUDNESS_LUFS - measured
+    corrected_path = media_path + ".loud.mp4"
+    result = subprocess.run(["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-i", media_path,
+                             "-af", f"volume={gain_db:.2f}dB,alimiter=limit=0.89:level=false", "-c:v", "copy",
+                             "-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart", corrected_path])
+    if result.returncode == 0:
+        os.replace(corrected_path, media_path)
+    elif os.path.exists(corrected_path):
+        os.remove(corrected_path)
