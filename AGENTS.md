@@ -53,7 +53,7 @@ scripts/run.sh  (one per machine; systemd runs it on servers)
 | `clipwatcher/rerender.py` | Rebuild queued clips in the current style. |
 | **`clipwatcher/capture/`** | **Stage 1**: chat + recording -> raw clips. |
 | `capture/channel_watcher.py` | Entry point for one channel: wires chat, detector, cutter, render worker; exits when the stream ends and clips are done. |
-| `capture/chat.py` | Anonymous chat readers: Twitch IRC, YouTube (chat-downloader), Kick (Pusher websocket). |
+| `capture/chat.py` | Anonymous chat readers: Twitch IRC, YouTube (chat-downloader), Kick (Pusher websocket); yield (arrival time, text). The texts go to Gemini with each clip. |
 | `capture/spike_detector.py` | `SpikeDetector`: 10 s buckets vs 3-min median. Pure logic. |
 | `capture/recording_buffer.py` | Reads `list.csv` of the rolling buffer, waits for the first piece, deletes old pieces. |
 | `capture/facecam.py` | Where the webcam is: `FACECAMS` setting > cache > Gemini looks at a frame. |
@@ -62,8 +62,8 @@ scripts/run.sh  (one per machine; systemd runs it on servers)
 | `render/pipeline.py` | `ClipJob` + `process_clip()`: runs every render step in order, writes the queue item (format documented there). |
 | `render/moment_finder.py` | Loudness envelope -> peak + onset -> which `LENGTH` window to keep. Pure math + one ffmpeg call. |
 | `render/transcriber.py` | Whisper on just the final window, with GTA/streamer vocabulary hints. |
-| `render/copywriting.py` | `ClipCopy`: one Gemini call (time-stamped frame grid + word-timed transcript + full sound/emoji/meme menus) -> hook, emphasis, title, comment and the beat sheet. Template fallback without a key. |
-| `render/beats.py` | `Beat` (sound, emoji, zoom, text_card, meme, sticker) + `validate_beats` (menus, times, limits, cutaway spacing) + the single-peak fallback. |
+| `render/copywriting.py` | `ClipCopy`: one Gemini call (the clip itself as a small video WITH sound + word-timed transcript + live chat + full sound/emoji/meme menus) -> summary, hook, emphasis, title, comment and the beat sheet with evidence. Template fallback (no memes) without a key. |
+| `render/beats.py` | `Beat` (sound, emoji, zoom, text_card, meme, sticker) with reason + evidence (quote / chat / visual); `validate_beats` checks menus, times, limits, cutaway spacing and that quotes/chat really occur there; single-peak fallback. |
 | `render/text_cards.py` | White meme text cards ("nobody cares") rendered as short clips with an optional sound. |
 | `render/subtitles.py` | 1-2 word caption chunks (low-confidence words dropped, swearing censored), styled `.ass`: hook box on the seam, captions, credit. Pure logic. |
 | `render/video_effects.py` | ffmpeg: one pass for trim + colour + zoom/shake/flash at every zoom beat + emoji/sticker overlays + subtitles; `insert_cutaway` splices a meme (letterboxed) or card. |
@@ -133,7 +133,7 @@ A real stream test needs the venv (`./scripts/install.sh`) and a live channel:
   `subtitles` filter gets a relative `.style.ass` name (avoids escaping problems).
 - Queue items store `final` relative to the repo root; use `poster.resolve_path()` to open it.
 - The raw cut is deleted after rendering, so `rerender` only works while the raw cut still exists.
-- Gemini's choices are validated against the menus: invented sound/emoji/meme names are dropped.
+- Gemini's choices are validated against the menus (invented names are dropped) and against the evidence (a beat whose quoted words or chat line don't occur at that time is dropped). Every clip writes `clips/ready/<clip>.edit.json` with the reasons.
 - Emoji WebMs must be decoded with `-c:v libvpx-vp9` (set before `-i`), or the transparency is lost.
 - Never add ripped meme audio or songs to the kit (Content ID claims). Kit sources must be CC0 / free licenses.
 - YouTube blocks recording/chat from many cloud IPs; Twitch/Kick work on servers.

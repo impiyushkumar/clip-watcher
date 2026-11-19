@@ -98,7 +98,6 @@ MUSIC_VOLUME = _float("MUSIC_VOLUME", 0)               # background music: off (
 LOUDNESS_LUFS = _float("LOUDNESS", -14)                # final loudness (Shorts/TikTok standard)
 
 # --- memes ---------------------------------------------------------------------------
-MEME_CHANCE = _float("MEME_CHANCE", 0.4)               # share of clips with a meme cutaway
 MEME_SECONDS = _float("MEME_SECONDS", 1.8)
 YTDLP_COOKIES = _text("YTDLP_COOKIES")                 # cookies.txt for yt-dlp (YouTube blocks servers)
 FONT_NAME = _text("CW_FONT", "Anton")                  # font family in assets/fonts/

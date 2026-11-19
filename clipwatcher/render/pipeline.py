@@ -26,7 +26,6 @@ rename them; add new keys instead:
 """
 import json
 import os
-import random
 import re
 import shutil
 import subprocess
@@ -48,6 +47,7 @@ from clipwatcher.render.video_effects import edit_video, insert_cutaway
 
 MEME_DELAY_AFTER_PEAK_S = 0.6
 PEAK_SYNC_TOLERANCE_S = 0.6        # a beat this close to the peak counts as "on the peak"
+CHAT_LAG_S = 8                     # chat reacts a few seconds after the moment
 FALLBACK_PEAK_BEFORE_SPIKE_S = 3   # no audio: assume the moment was 3 s before chat reacted
 
 
@@ -62,6 +62,7 @@ class ClipJob:
     length_s: int = settings.CLIP_LENGTH_S             # final clip length
     spike_at_s: float = None                           # chat spike, seconds into the raw clip
     seam_y: int = None                                 # split layout: y of the facecam/gameplay seam
+    chat_messages: list = field(default_factory=list)  # [(seconds into the raw clip, text)] live chat
     score: int = 0
     whisper_model: str = settings.WHISPER_MODEL
     upload_targets: str = "none"                       # used only when queue_for_schedule is False
@@ -108,21 +109,33 @@ def remove_quietly(*file_paths):
             os.remove(file_path)
 
 
-def complete_beats(copy, timing, transcript_text, meme_menu):
-    """Gemini's beat sheet (or the single-peak fallback), always with a zoom and a sound on
-    the peak. Without Gemini a meme may follow the peak when its description matches."""
+def complete_beats(copy, timing):
+    """Gemini's evidence-checked beat sheet (or the single-peak fallback), always with a zoom
+    and a sound on the peak. Never adds memes on its own: those need Gemini's reasons."""
     beats = list(copy.beats) if copy.beats else fallback_beats(timing.onset_s, timing.peak_s, emoji=copy.emoji)
     near_peak = [beat for beat in beats if abs(beat.at_s - timing.onset_s) <= PEAK_SYNC_TOLERANCE_S]
     if not any(beat.kind == "zoom" for beat in near_peak):
-        beats.append(Beat(at_s=timing.onset_s, kind="zoom"))
+        beats.append(Beat(at_s=timing.onset_s, kind="zoom", reason="loudest moment of the clip"))
     if not any(beat.kind == "sound" for beat in near_peak):
-        beats.append(Beat(at_s=timing.onset_s, kind="sound"))  # "" -> keyword pick / boom
-    if not copy.beats and meme_menu and random.random() <= settings.MEME_CHANCE:
-        meme_name = sound_design.best_category_by_keywords(transcript_text, meme_menu)
-        if meme_name:
-            beats.append(Beat(at_s=min(timing.peak_s + MEME_DELAY_AFTER_PEAK_S, max(1.0, timing.length_s - 0.5)),
-                              kind="meme", value=meme_name, duration_s=settings.MEME_SECONDS))
+        beats.append(Beat(at_s=timing.onset_s, kind="sound", reason="loudest moment of the clip",
+                          visual="peak"))  # "" -> keyword pick / boom
     return sorted(beats, key=lambda beat: beat.at_s)
+
+
+def clip_chat(chat_messages, timing):
+    """Chat from raw-clip time to clip time; keeps messages up to CHAT_LAG_S after the clip."""
+    return [(round(message_s - timing.start_s, 1), text) for message_s, text in chat_messages
+            if timing.start_s <= message_s <= timing.start_s + timing.length_s + CHAT_LAG_S]
+
+
+def write_edit_report(clip_name, copy, beats):
+    """clips/ready/<clip>.edit.json: what Gemini understood and WHY each beat is there."""
+    report = {"summary": copy.summary, "hook": copy.hook, "title": copy.title,
+              "rejected_beats_without_evidence": copy.rejected_beats,
+              "beats": [{key: value for key, value in beat.__dict__.items() if value not in ("", 0, 0.0, None)}
+                        for beat in beats]}
+    with open(os.path.join(paths.READY_CLIPS_DIR, clip_name + ".edit.json"), "w", encoding="utf-8") as report_file:
+        json.dump(report, report_file, indent=1, ensure_ascii=False)
 
 
 def render_cutaway(beat, work_path):
@@ -152,13 +165,16 @@ def process_clip(job):
     transcript = transcribe_window(job.raw_path, job.whisper_model, timing.start_s, timing.length_s, vocabulary)
     transcript_text = (transcript.get("text") or "").strip()
     write_srt(transcript, os.path.join(paths.READY_CLIPS_DIR, job.clip_name + ".srt"))
-    meme_menu = memes.meme_menu()
     copy = write_copy(transcript, job.stream_info, video_path=job.raw_path, start_s=timing.start_s,
                       length_s=timing.length_s, peak_s=timing.peak_s, sound_menu=sound_design.load_sound_menu(),
-                      emoji_names=list_emojis(), meme_menu=meme_menu)
-    beats = complete_beats(copy, timing, transcript_text, meme_menu)
+                      emoji_names=list_emojis(), meme_menu=memes.meme_menu(),
+                      chat_messages=clip_chat(job.chat_messages, timing))
+    beats = complete_beats(copy, timing)
+    write_edit_report(job.clip_name, copy, beats)
     log(f"{job.clip_name}: {describe(copy)}")
-    log(f"{job.clip_name}: beats " + ", ".join(f"{beat.at_s:.1f}s {beat.kind} {beat.value}".strip() for beat in beats))
+    for beat in beats:
+        evidence = beat.quote and f'said "{beat.quote}"' or beat.chat and f'chat "{beat.chat}"' or beat.visual
+        log(f"{job.clip_name}:   {beat.at_s:5.1f}s {beat.kind:9} {beat.value:35} because {beat.reason} [{evidence}]")
 
     final_path = os.path.join(paths.READY_CLIPS_DIR, job.clip_name + ".mp4")
     work_prefix = final_path + ".work"

@@ -49,11 +49,17 @@ class CopywritingTest(unittest.TestCase):
     def test_gemini_reply_is_validated_against_menus(self):
         reply = {"hook": "Kai Cenat got PRESSED by an NPC in GTA 6 😭", "emphasis": "pressed",
                  "title": "Kai Cenat got PRESSED by an NPC in GTA 6 😭", "comment": "Would you fight back? 😭",
-                 "beats": [{"at": 2.0, "kind": "sound", "value": "impact/punch"},
-                           {"at": 2.0, "kind": "emoji", "value": "skull"},
-                           {"at": 0.4, "kind": "text_card", "value": "too early"},     # cutaway in the first second
-                           {"at": 5.0, "kind": "meme", "value": "not-there.mp4"},
-                           {"at": 6.0, "kind": "sound", "value": "fail/made-up"}]}
+                 "summary": "An NPC punches Kai and he yells bro.",
+                 "beats": [{"at": 2.0, "kind": "sound", "value": "impact/punch", "reason": "the NPC hits him",
+                            "quote": "bro"},
+                           {"at": 2.0, "kind": "emoji", "value": "skull", "reason": "he gets embarrassed",
+                            "visual": "Kai falls over"},
+                           {"at": 4.0, "kind": "sound", "value": "impact/punch", "reason": "made up",
+                            "quote": "this was never said"},                          # false quote
+                           {"at": 6.0, "kind": "emoji", "value": "fire"},               # no reason/evidence
+                           {"at": 0.4, "kind": "text_card", "value": "too early", "reason": "x", "visual": "y"},
+                           {"at": 5.0, "kind": "meme", "value": "not-there.mp4", "reason": "x", "visual": "y"},
+                           {"at": 6.0, "kind": "sound", "value": "fail/made-up", "reason": "x", "visual": "y"}]}
         menu = {"impact/punch": "someone gets hit", "fail/mission-failed": "dies"}
         transcript = {"text": "bro the npc", "segments": [{"words": [{"word": " bro", "start": 1.9, "end": 2.1}]}]}
         with mock.patch.object(settings, "GEMINI_API_KEY", "key"), \
@@ -63,7 +69,10 @@ class CopywritingTest(unittest.TestCase):
         self.assertEqual(copy.hook, "KAI CENAT GOT PRESSED BY AN NPC IN GTA 6")  # emoji stripped
         self.assertEqual(copy.emphasis, "PRESSED")
         self.assertEqual([(beat.kind, beat.value) for beat in copy.beats],
-                         [("sound", "impact/punch"), ("emoji", "skull")])  # invented / too early dropped
+                         [("sound", "impact/punch"), ("emoji", "skull")])  # no evidence / invented / too early dropped
+        self.assertEqual(copy.beats[0].reason, "the NPC hits him")
+        self.assertEqual(copy.summary, "An NPC punches Kai and he yells bro.")
+        self.assertEqual(copy.rejected_beats, 5)
         self.assertEqual(copy.comment, "Would you fight back? 😭")
         prompt = ask.call_args[0][0]
         self.assertIn("fail/mission-failed: dies", prompt)  # Gemini sees the whole sound menu
@@ -116,14 +125,15 @@ class FreshnessRankingTest(unittest.TestCase):
 class BeatValidationTest(unittest.TestCase):
     def test_validation_and_limits(self):
         from clipwatcher.render.beats import validate_beats
-        raw = [{"at": 1.0, "kind": "sound", "value": "impact/punch"},
-               {"at": 1.1, "kind": "sound", "value": "impact/punch"},          # too close to the same kind
-               {"at": 2.0, "kind": "text_card", "value": "nobody cares"},
-               {"at": 2.5, "kind": "meme", "value": "a.mp4"},                   # cutaway too close
-               {"at": 4.0, "kind": "meme", "value": "invented.mp4"},            # not in the menu
-               {"at": 30.0, "kind": "zoom"},                                    # outside the clip
+        evidence = {"reason": "fits", "visual": "something happens"}
+        raw = [{"at": 1.0, "kind": "sound", "value": "impact/punch", **evidence},
+               {"at": 1.1, "kind": "sound", "value": "impact/punch", **evidence},  # too close to the same kind
+               {"at": 2.0, "kind": "text_card", "value": "nobody cares", **evidence},
+               {"at": 2.5, "kind": "meme", "value": "a.mp4", **evidence},         # cutaway too close
+               {"at": 4.0, "kind": "meme", "value": "invented.mp4", **evidence},  # not in the menu
+               {"at": 30.0, "kind": "zoom"},                                      # outside the clip
                {"at": "x", "kind": "zoom"}, {"kind": "teleport", "at": 3}, "garbage",
-               {"at": 5.0, "kind": "emoji", "value": "skull", "duration": 99}]  # duration capped
+               {"at": 5.0, "kind": "emoji", "value": "skull", "duration": 99, **evidence}]  # duration capped
         beats = validate_beats(raw, 15.0, {"impact/punch": "hit"}, ["skull"], {"a.mp4": "x"})
         self.assertEqual([(beat.at_s, beat.kind) for beat in beats],
                          [(1.0, "sound"), (2.0, "text_card"), (5.0, "emoji")])
@@ -155,3 +165,18 @@ class SoundLibraryMenuTest(unittest.TestCase):
             self.assertEqual(menu["custom/reaction/bruh.mp3"], "disappointment, a dumb move")
             self.assertEqual(sound_design.sound_files("custom/reaction/bruh.mp3"),
                              [os.path.join(sfx_dir, "reaction", "bruh.mp3")])
+
+
+class BeatEvidenceTest(unittest.TestCase):
+    def test_quotes_and_chat_must_really_occur_near_the_beat(self):
+        from clipwatcher.render.beats import validate_beats
+        timed_words = [(3.0, " no"), (3.2, " way"), (3.5, " bro"), (9.0, " nice")]
+        chat_messages = [(6.5, "LMAOOO he's cooked"), (12.0, "W")]
+        menu = {"impact/punch": "hit", "comedy/boing": "goofy"}
+        raw = [{"at": 3.3, "kind": "sound", "value": "impact/punch", "reason": "r", "quote": "no way bro"},  # ok
+               {"at": 7.0, "kind": "sound", "value": "comedy/boing", "reason": "r", "quote": "no way bro"},  # wrong time
+               {"at": 5.0, "kind": "text_card", "value": "he's cooked", "reason": "chat", "chat": "he's cooked"},  # ok
+               {"at": 9.0, "kind": "text_card", "value": "lol", "reason": "chat", "chat": "he's cooked"},  # chat earlier
+               {"at": 9.0, "kind": "sound", "value": "comedy/boing", "visual": "falls"}]  # no reason
+        beats = validate_beats(raw, 15.0, menu, [], {}, timed_words=timed_words, chat_messages=chat_messages)
+        self.assertEqual([(beat.at_s, beat.kind) for beat in beats], [(3.3, "sound"), (5.0, "text_card")])

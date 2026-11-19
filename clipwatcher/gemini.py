@@ -9,8 +9,13 @@ BUSY_STATUS_CODES = (429, 500, 502, 503, 504)
 BACKUP_MODELS = ["gemini-2.5-flash", "gemini-2.5-flash-lite"]
 
 
-def ask_gemini_json(prompt, temperature=0.9, image_jpeg=None):
-    """Send `prompt` (and optionally one JPEG image), return the parsed JSON reply, or None.
+MAX_INLINE_MEDIA_BYTES = 18 * 1024 * 1024   # Gemini's inline request limit is 20 MB
+
+
+def ask_gemini_json(prompt, temperature=0.9, image_jpeg=None, media=()):
+    """Send `prompt` with an optional JPEG and optional media [(mime_type, bytes)], e.g. the
+    clip itself as ("video/mp4", ...) so Gemini can watch AND hear it. Returns the parsed
+    JSON reply, or None.
 
     Busy errors (429/5xx) are retried, and an unavailable model falls back to the
     backup models, because a busy model is common at peak times."""
@@ -20,9 +25,10 @@ def ask_gemini_json(prompt, temperature=0.9, image_jpeg=None):
     import requests
 
     parts = [{"text": prompt}]
-    if image_jpeg:
-        parts.append({"inline_data": {"mime_type": "image/jpeg",
-                                      "data": base64.b64encode(image_jpeg).decode()}})
+    attachments = ([("image/jpeg", image_jpeg)] if image_jpeg else []) + list(media)
+    for mime_type, data in attachments:
+        if data and len(data) <= MAX_INLINE_MEDIA_BYTES:
+            parts.append({"inline_data": {"mime_type": mime_type, "data": base64.b64encode(data).decode()}})
     models = list(dict.fromkeys([settings.GEMINI_MODEL] + BACKUP_MODELS))  # unique, in order
     last_error = ""
     for model in models:
@@ -35,7 +41,7 @@ def ask_gemini_json(prompt, temperature=0.9, image_jpeg=None):
                     json={"contents": [{"parts": parts}],
                           "generationConfig": {"responseMimeType": "application/json",
                                                "temperature": temperature}},
-                    timeout=30)
+                    timeout=120)
                 if response.status_code in BUSY_STATUS_CODES:
                     last_error = f"{model}: {response.status_code}"
                     time.sleep(2 * (attempt + 1))
