@@ -180,3 +180,17 @@ class BeatEvidenceTest(unittest.TestCase):
                {"at": 9.0, "kind": "sound", "value": "comedy/boing", "visual": "falls"}]  # no reason
         beats = validate_beats(raw, 15.0, menu, [], {}, timed_words=timed_words, chat_messages=chat_messages)
         self.assertEqual([(beat.at_s, beat.kind) for beat in beats], [(3.3, "sound"), (5.0, "text_card")])
+
+
+class TranscriptWindowTest(unittest.TestCase):
+    def test_shift_to_window_keeps_only_window_words(self):
+        from clipwatcher.render.transcriber import shift_to_window
+        padded = {"segments": [{"words": [
+            {"word": " before", "start": 2.0, "end": 2.4},
+            {"word": " radio", "start": 6.0, "end": 6.4},
+            {"word": " tower", "start": 6.4, "end": 6.8},
+            {"word": " after", "start": 22.0, "end": 22.3}]}]}
+        result = shift_to_window(padded, lead_s=5.0, length_s=15.0)
+        self.assertEqual([(word["word"].strip(), word["start"]) for word in result["segments"][0]["words"]],
+                         [("radio", 1.0), ("tower", 1.4)])
+        self.assertEqual(result["text"], "radio tower")
