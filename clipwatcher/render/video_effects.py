@@ -85,7 +85,7 @@ def overlay_box(kind, index, width, height, seam_y):
 
 
 def edit_video(raw_path, output_path, start_s, length_s, chunks, hook, emphasis="", seam_y=None,
-               peak_s=None, zoom_times_s=(), overlays=(), credit=""):
+               peak_s=None, zoom_times_s=(), overlays=(), credit="", hold_end_s=0.0):
     """Trim [start_s, start_s + length_s] of raw_path and apply effects, overlays and text.
     overlays: [(kind "emoji"|"sticker"|"keyed", file path, at_s, duration_s[, key_color])]. All times are relative
     to the trimmed clip. Returns success."""
@@ -97,7 +97,11 @@ def edit_video(raw_path, output_path, start_s, length_s, chunks, hook, emphasis=
     # the subtitles filter is given a relative name, so ffmpeg runs inside output_dir
     subtitles = f"subtitles=.style.ass:fontsdir='{paths.FONTS_DIR}'"
     inputs = ["-ss", f"{start_s:.2f}", "-t", f"{length_s:.2f}", "-i", os.path.abspath(raw_path)]
-    graph = [f"[0:v]{','.join(effects_filter(list(zoom_times_s), width, height) or ['null'])}[layer0]"]
+    hold_end_s = max(0.0, hold_end_s)
+    hold = [f"tpad=stop_mode=clone:stop_duration={hold_end_s:.2f}"] if hold_end_s > 0.05 else []
+    output_length_s = length_s + (hold_end_s if hold else 0.0)
+    graph = [f"[0:v]{','.join((effects_filter(list(zoom_times_s), width, height) or ['null']) + hold)}[layer0]",
+             f"[0:a]apad=pad_dur={hold_end_s:.2f}[audio]" if hold else "[0:a]anull[audio]"]
     counts = {"emoji": 0, "sticker": 0, "keyed": 0}
     for input_index, overlay in enumerate(overlays, start=1):
         kind, file_path, at_s, duration_s = overlay[:4]
@@ -110,13 +114,13 @@ def edit_video(raw_path, output_path, start_s, length_s, chunks, hook, emphasis=
         border = ",pad=iw+12:ih+12:6:6:white" if kind == "sticker" else ""
         graph.append(f"[{input_index}:v]{prepare}scale={size}:-2,format=yuva420p{border},"
                      f"setpts=PTS-STARTPTS+{at_s:.2f}/TB[overlay{input_index}]")
-        until_s = min(length_s, at_s + duration_s)
+        until_s = min(output_length_s, at_s + duration_s)
         position_y = y if y is not None else "main_h-overlay_h"
         graph.append(f"[layer{input_index - 1}][overlay{input_index}]overlay={x}:{position_y}:eof_action=pass:"
                      f"enable='between(t,{at_s:.2f},{until_s:.2f})'[layer{input_index}]")
     graph.append(f"[layer{len(overlays)}]{subtitles}[video]")
     command = ["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", *inputs,
-               "-filter_complex", ";".join(graph), "-map", "[video]", "-map", "0:a?", "-t", f"{length_s:.2f}",
+               "-filter_complex", ";".join(graph), "-map", "[video]", "-map", "[audio]", "-t", f"{output_length_s:.2f}",
                "-r", str(FPS), "-c:v", "libx264", "-preset", "veryfast", "-crf", "18",
                "-threads", settings.FFMPEG_THREADS, "-pix_fmt", "yuv420p",
                "-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart", os.path.basename(output_path)]

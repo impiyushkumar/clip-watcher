@@ -49,6 +49,7 @@ MEME_DELAY_AFTER_PEAK_S = 0.6
 PEAK_SYNC_TOLERANCE_S = 0.6        # a beat this close to the peak counts as "on the peak"
 CHAT_LAG_S = 8                     # chat reacts a few seconds after the moment
 OPENING_HOOK_S = 1.5               # something must happen before this
+MAX_MEME_PLAY_S = 4.0              # longest a meme may play
 FALLBACK_PEAK_BEFORE_SPIKE_S = 3   # no audio: assume the moment was 3 s before chat reacted
 
 
@@ -142,6 +143,12 @@ def write_edit_report(clip_name, copy, beats):
         json.dump(report, report_file, indent=1, ensure_ascii=False)
 
 
+def full_meme_length_s(meme_name):
+    """Memes always play their whole key moment (trimmed on import): cutting a reaction
+    short kills the joke."""
+    return min(MAX_MEME_PLAY_S, sound_design.media_duration_s(meme_path(meme_name)))
+
+
 def render_cutaway(beat, work_path):
     """(file, duration_s) for a text card or meme beat, or (None, 0) if it can't be made."""
     if beat.kind == "text_card":
@@ -152,7 +159,7 @@ def render_cutaway(beat, work_path):
     file_path = meme_path(beat.value)
     if not file_path:
         return None, 0.0
-    return file_path, min(beat.duration_s or settings.MEME_SECONDS, sound_design.media_duration_s(file_path))
+    return file_path, full_meme_length_s(beat.value)
 
 
 def process_clip(job):
@@ -191,20 +198,23 @@ def process_clip(job):
         key_color = memes.meme_key_color(beat.value) if beat.kind in ("meme", "sticker") and meme_path(beat.value) else None
         if key_color:
             # green-screen / black-background meme: keyed out over the gameplay (with its sound), not a cutaway
-            duration_s = min(beat.duration_s or settings.MEME_SECONDS,
-                             sound_design.media_duration_s(meme_path(beat.value)))
-            overlays.append(("keyed", meme_path(beat.value), beat.at_s, duration_s, key_color))
+            overlays.append(("keyed", meme_path(beat.value), beat.at_s, full_meme_length_s(beat.value), key_color))
             beat.kind = "keyed"
             continue
         overlay_file = emoji_path(beat.value) if beat.kind == "emoji" else (
             meme_path(beat.value) if beat.kind == "sticker" else None)
         if overlay_file:
-            overlays.append((beat.kind, overlay_file, beat.at_s, beat.duration_s or 1.6))
+            duration_s = full_meme_length_s(beat.value) if beat.kind == "sticker" else (beat.duration_s or 1.6)
+            overlays.append((beat.kind, overlay_file, beat.at_s, duration_s))
+    # a meme near the end plays to its last frame: the clip holds its final frame meanwhile
+    hold_end_s = max([0.0] + [overlay[2] + overlay[3] - timing.length_s for overlay in overlays
+                              if overlay[0] in ("keyed", "sticker")])
     current_path = f"{work_prefix}.edit.mp4"
     temporary_files.append(current_path)
     if not edit_video(job.raw_path, current_path, timing.start_s, timing.length_s, caption_chunks(transcript),
                       copy.hook, copy.emphasis, job.seam_y, timing.peak_s,
                       zoom_times_s=[beat.at_s for beat in beats if beat.kind == "zoom"], overlays=overlays,
+                      hold_end_s=hold_end_s,
                       credit=source_credit(job.source_url)):
         log(f"video edit failed for {job.clip_name}; keeping raw clip only")
         remove_quietly(*temporary_files)

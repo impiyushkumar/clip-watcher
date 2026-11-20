@@ -223,3 +223,12 @@ class OverlayMemeSpacingTest(unittest.TestCase):
                {"at": 14.1, "kind": "meme", "value": "plain.mp4", **evidence}]
         beats = validate_beats(raw, 15.0, {}, [], {"keyed.mp4": "", "plain.mp4": ""}, overlay_memes={"keyed.mp4"})
         self.assertEqual([beat.value for beat in beats], ["nice", "keyed.mp4"])
+
+
+class MemeRestraintTest(unittest.TestCase):
+    def test_at_most_three_memes_three_seconds_apart(self):
+        from clipwatcher.render.beats import validate_beats
+        evidence = {"reason": "r", "visual": "v"}
+        raw = [{"at": time_s, "kind": "meme", "value": "a.mp4", **evidence} for time_s in (1.5, 3.0, 4.6, 8.0, 11.5, 14.0)]
+        beats = validate_beats(raw, 15.0, {}, [], {"a.mp4": ""}, overlay_memes={"a.mp4"})
+        self.assertEqual([beat.at_s for beat in beats], [1.5, 4.6, 8.0])
