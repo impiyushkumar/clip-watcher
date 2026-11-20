@@ -1,17 +1,19 @@
-# memes/
+# memes/ (your reaction memes)
 
-Drop short reaction memes here (MP4/MOV/WEBM/GIF, 1-3 seconds is ideal).
-clip-watcher cuts to one right after the hype moment (about 60% of clips, `MEME_CHANCE`),
-for up to `MEME_SECONDS` (default 2.2), then returns to the stream.
+The beat sheet cuts to these (full-screen, letterboxed, with their own sound) or shows
+them as a small picture-in-picture sticker, right where they fit the moment. Gemini reads
+`catalog.json` to know what each meme is and when to use it.
 
-Name each file by what it is, because the name is how the meme gets picked
-(Gemini reads the names, or keywords from the transcript are matched), e.g.
+Add memes with the importer: it trims to max 4 s, normalizes the video, and (with a Gemini
+key) watches the clip and writes the "use when" description for you:
 
-    shocked-scream.mp4
-    smitten-in-love-dreamy.mp4
-    bruh-disappointed.mp4
-    laughing-crying.mp4
-    vine-boom-stare.mp4
+    python3 -m clipwatcher add-meme path/to/clip.mp4
+    python3 -m clipwatcher add-meme <URL> --start 3.5 --end 6     # URLs need: pip install yt-dlp
+    python3 -m clipwatcher add-meme clip.mp4 --name crying-guy --use-when "someone fails badly"
+    python3 -m clipwatcher memes                                    # list what's in the library
 
-Only use clips you have the right to post. Copyrighted movie or music clips can get
-posts muted, removed, or the account struck.
+Everything in this folder except this README is git-ignored: your library stays private and
+is not published with the repo. Only add clips you have the right to use. Copyrighted movie,
+TV or music clips can get Shorts claimed, muted or removed, and campaigns reject those views.
+Good sources: clips you film yourself, public-domain footage, and meme templates whose
+creators allow reuse.

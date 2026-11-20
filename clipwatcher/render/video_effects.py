@@ -1,9 +1,10 @@
 """ffmpeg passes that change the picture.
 
 edit_video(): ONE encode that trims the raw clip to the chosen window and adds
-    colour boost + sharpen -> zoom punch (eased) + camera shake + white flash on the peak
-    -> animated emoji pop-up on the peak -> hook box + captions + source credit.
-insert_meme(): cut to a meme for MEME_SECONDS, then back to the clip.
+    colour boost + sharpen -> zoom punch + shake + flash at every zoom beat -> animated
+    emojis and meme stickers at their beats -> hook box + captions + source credit.
+insert_cutaway(): cut away to a meme (letterboxed, own audio) or a text card for its
+    duration, then back to the clip.
 """
 import os
 import subprocess
@@ -17,81 +18,94 @@ SHAKE_DURATION_S = 0.35
 SHAKE_STRENGTH = 0.012       # share of the frame width
 FLASH_DURATION_S = 0.07
 FPS = 30
+EMOJI_SIZE_SHARE = 0.24      # of the frame width
+STICKER_SIZE_SHARE = 0.46
 
 
-def peak_effects_filter(onset_s, width, height):
-    """Colour, zoom punch, shake and flash around onset_s (seconds into the final clip)."""
+def even(value):
+    return int(value) // 2 * 2
+
+
+def any_window(times_s, duration_s, variable):
+    """ffmpeg expression: 1 while `variable` is inside any [t, t + duration_s]."""
+    return "+".join(f"between({variable},{time_s:.2f},{time_s + duration_s:.2f})" for time_s in times_s)
+
+
+def effects_filter(zoom_times_s, width, height):
+    """Colour boost, then zoom punch + shake + flash at every time in zoom_times_s."""
     filters = []
     if settings.COLOR_BOOST:
         filters.append("eq=saturation=1.18:contrast=1.06,unsharp=5:5:0.5")
-    if onset_s is not None and (settings.ZOOM_PUNCH or settings.SHAKE):
-        zoom_end_s = onset_s + ZOOM_DURATION_S
-        shake_end_s = onset_s + SHAKE_DURATION_S
-        in_zoom = f"between(in_time,{onset_s:.2f},{zoom_end_s:.2f})"
-        in_shake = f"between(in_time,{onset_s:.2f},{shake_end_s:.2f})"
+    if zoom_times_s and (settings.ZOOM_PUNCH or settings.SHAKE):
         if settings.ZOOM_PUNCH:
-            zoom = f"if({in_zoom},{ZOOM_PEAK}-{ZOOM_PEAK - 1:.2f}*(in_time-{onset_s:.2f})/{ZOOM_DURATION_S},1)"
+            # eased punch: jumps to ZOOM_PEAK at each beat and slides back to 1.0
+            zoom_terms = "+".join(
+                f"between(in_time,{time_s:.2f},{time_s + ZOOM_DURATION_S:.2f})*"
+                f"({ZOOM_PEAK - 1:.2f}-{ZOOM_PEAK - 1:.2f}*(in_time-{time_s:.2f})/{ZOOM_DURATION_S})"
+                for time_s in zoom_times_s)
+            zoom = f"1+max(0,{zoom_terms})"
         else:
-            zoom = f"if({in_shake},1.05,1)"  # a little zoom gives the shake room to move
-        shake_x = f"if({in_shake},sin(in_time*95)*iw*{SHAKE_STRENGTH},0)" if settings.SHAKE else "0"
-        shake_y = f"if({in_shake},cos(in_time*80)*ih*{SHAKE_STRENGTH},0)" if settings.SHAKE else "0"
+            zoom = f"1+0.05*min(1,{any_window(zoom_times_s, SHAKE_DURATION_S, 'in_time')})"
+        in_shake = f"min(1,{any_window(zoom_times_s, SHAKE_DURATION_S, 'in_time')})"
+        shake_x = f"{in_shake}*sin(in_time*95)*iw*{SHAKE_STRENGTH}" if settings.SHAKE else "0"
+        shake_y = f"{in_shake}*cos(in_time*80)*ih*{SHAKE_STRENGTH}" if settings.SHAKE else "0"
         filters.append(f"zoompan=z='{zoom}':d=1:x='iw/2-(iw/zoom/2)+{shake_x}':"
                        f"y='ih/2-(ih/zoom/2)+{shake_y}':s={width}x{height}:fps={FPS}")
-    if onset_s is not None and settings.FLASH:
+    if zoom_times_s and settings.FLASH:
         filters.append(f"drawbox=x=0:y=0:w=iw:h=ih:color=white@0.55:t=fill:"
-                       f"enable='between(t,{onset_s:.2f},{onset_s + FLASH_DURATION_S:.2f})'")
+                       f"enable='{any_window(zoom_times_s, FLASH_DURATION_S, 't')}'")
     return filters
 
 
-EMOJI_SHOW_S = 1.8          # how long the emoji stays up after the peak
-EMOJI_SIZE_SHARE = 0.24     # of the frame width
+def overlay_box(kind, index, width, height, seam_y):
+    """(size, x, y) for the index-th emoji or sticker; alternates sides so they don't stack."""
+    if kind == "sticker":
+        size = even(width * STICKER_SIZE_SHARE)
+        x = (width - size) // 2
+        y = (seam_y or int(height * 0.3)) + int(height * 0.04)
+        return size, x, y
+    size = even(width * EMOJI_SIZE_SHARE)
+    right = index % 2 == 0
+    x = width - size - int(width * 0.05) if right else int(width * 0.05)
+    y = (seam_y + int(height * 0.05)) if seam_y else int(height * 0.24)
+    return size, x, y
 
 
-def emoji_position(width, height, seam_y):
-    """Top-left corner for the emoji: just under the seam on the right (split layout),
-    otherwise upper right under the hook."""
-    size = int(width * EMOJI_SIZE_SHARE)
-    if seam_y:
-        return width - size - int(width * 0.05), seam_y + int(height * 0.05)
-    return width - size - int(width * 0.06), int(height * 0.24)
-
-
-def edit_video(raw_path, output_path, start_s, length_s, chunks, hook, emphasis="",
-               seam_y=None, peak_s=None, onset_s=None, emoji_file=None, credit=""):
-    """Trim [start_s, start_s + length_s] of raw_path and apply effects, the emoji pop-up and
-    text. Times in chunks, peak_s and onset_s are relative to the trimmed clip. Returns success."""
+def edit_video(raw_path, output_path, start_s, length_s, chunks, hook, emphasis="", seam_y=None,
+               peak_s=None, zoom_times_s=(), overlays=(), credit=""):
+    """Trim [start_s, start_s + length_s] of raw_path and apply effects, overlays and text.
+    overlays: [(kind "emoji"|"sticker", file path, at_s, duration_s)]. All times are relative
+    to the trimmed clip. Returns success."""
     output_dir = os.path.dirname(os.path.abspath(output_path))
     ass_path = os.path.join(output_dir, ".style.ass")
     width, height = settings.output_size()
     write_ass(ass_path, chunks, hook, width, height, emphasis=emphasis, seam_y=seam_y, peak_s=peak_s,
               credit=credit)
-    base_filters = peak_effects_filter(onset_s, width, height) or ["null"]
     # the subtitles filter is given a relative name, so ffmpeg runs inside output_dir
     subtitles = f"subtitles=.style.ass:fontsdir='{paths.FONTS_DIR}'"
     inputs = ["-ss", f"{start_s:.2f}", "-t", f"{length_s:.2f}", "-i", os.path.abspath(raw_path)]
-    if emoji_file and onset_s is not None:
-        emoji_size = even(width * EMOJI_SIZE_SHARE)
-        emoji_x, emoji_y = emoji_position(width, height, seam_y)
-        show_until_s = min(length_s, onset_s + EMOJI_SHOW_S)
-        inputs += ["-stream_loop", "-1", "-c:v", "libvpx-vp9", "-i", os.path.abspath(emoji_file)]
-        graph = (f"[0:v]{','.join(base_filters)}[base];"
-                 f"[1:v]scale={emoji_size}:-1,format=yuva420p,setpts=PTS-STARTPTS+{onset_s:.2f}/TB[emoji];"
-                 f"[base][emoji]overlay={emoji_x}:{emoji_y}:eof_action=pass:"
-                 f"enable='between(t,{onset_s:.2f},{show_until_s:.2f})',{subtitles}[video]")
-    else:
-        graph = f"[0:v]{','.join(base_filters + [subtitles])}[video]"
+    graph = [f"[0:v]{','.join(effects_filter(list(zoom_times_s), width, height) or ['null'])}[layer0]"]
+    counts = {"emoji": 0, "sticker": 0}
+    for input_index, (kind, file_path, at_s, duration_s) in enumerate(overlays, start=1):
+        size, x, y = overlay_box(kind, counts[kind], width, height, seam_y)
+        counts[kind] += 1
+        decoder = ["-c:v", "libvpx-vp9"] if file_path.endswith(".webm") else []  # keeps emoji transparency
+        inputs += ["-stream_loop", "-1", *decoder, "-i", os.path.abspath(file_path)]
+        border = ",pad=iw+12:ih+12:6:6:white" if kind == "sticker" else ""
+        graph.append(f"[{input_index}:v]scale={size}:-2,format=yuva420p{border},"
+                     f"setpts=PTS-STARTPTS+{at_s:.2f}/TB[overlay{input_index}]")
+        until_s = min(length_s, at_s + duration_s)
+        graph.append(f"[layer{input_index - 1}][overlay{input_index}]overlay={x}:{y}:eof_action=pass:"
+                     f"enable='between(t,{at_s:.2f},{until_s:.2f})'[layer{input_index}]")
+    graph.append(f"[layer{len(overlays)}]{subtitles}[video]")
     command = ["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", *inputs,
-               "-filter_complex", graph, "-map", "[video]", "-map", "0:a?", "-t", f"{length_s:.2f}",
+               "-filter_complex", ";".join(graph), "-map", "[video]", "-map", "0:a?", "-t", f"{length_s:.2f}",
                "-r", str(FPS), "-c:v", "libx264", "-preset", "veryfast", "-crf", "18",
                "-threads", settings.FFMPEG_THREADS, "-pix_fmt", "yuv420p",
                "-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart", os.path.basename(output_path)]
     succeeded = subprocess.run(command, cwd=output_dir).returncode == 0
     os.remove(ass_path)
     return succeeded
-
-
-def even(value):
-    return int(value) // 2 * 2
 
 
 def has_audio(media_path):
@@ -101,26 +115,26 @@ def has_audio(media_path):
     return probe.stdout.strip() != ""
 
 
-def insert_meme(video_path, meme_name, at_s, output_path):
-    """Cut to the meme for up to MEME_SECONDS at `at_s`, then back to the clip. Returns success."""
+def insert_cutaway(video_path, cutaway_path, at_s, duration_s, output_path):
+    """Play `cutaway_path` (meme or text card) for duration_s at `at_s`, then continue the
+    clip. Memes are letterboxed (black bars, nothing cropped). Returns success."""
     width, height = settings.output_size()
-    meme_s = settings.MEME_SECONDS
-    meme_path = os.path.join(paths.MEMES_DIR, meme_name)
-    normalize = f"scale={width}:{height}:force_original_aspect_ratio=increase,crop={width}:{height},fps={FPS},setsar=1,format=yuv420p"
-    meme_audio = (f"[1:a]atrim=0:{meme_s},asetpts=PTS-STARTPTS,aresample=48000,aformat=channel_layouts=stereo[ma];"
-                  if has_audio(meme_path) else f"anullsrc=r=48000:cl=stereo,atrim=0:{meme_s}[ma];")
-    filter_graph = (
+    letterbox = (f"scale={width}:{height}:force_original_aspect_ratio=decrease,"
+                 f"pad={width}:{height}:(ow-iw)/2:(oh-ih)/2:black,fps={FPS},setsar=1,format=yuv420p")
+    cutaway_audio = (f"[1:a]atrim=0:{duration_s},asetpts=PTS-STARTPTS,aresample=48000,"
+                     f"aformat=channel_layouts=stereo,apad,atrim=0:{duration_s}[ca];"
+                     if has_audio(cutaway_path) else f"anullsrc=r=48000:cl=stereo,atrim=0:{duration_s}[ca];")
+    graph = (
         f"[0:v]trim=0:{at_s},setpts=PTS-STARTPTS,fps={FPS},format=yuv420p[v1];"
-        f"[0:a]atrim=0:{at_s},asetpts=PTS-STARTPTS,aresample=48000[a1];"
-        f"[1:v]trim=0:{meme_s},setpts=PTS-STARTPTS,{normalize}[mv];"
-        + meme_audio
+        f"[0:a]atrim=0:{at_s},asetpts=PTS-STARTPTS,aresample=48000,aformat=channel_layouts=stereo[a1];"
+        f"[1:v]trim=0:{duration_s},setpts=PTS-STARTPTS,{letterbox}[cv];"
+        + cutaway_audio
         + f"[0:v]trim=start={at_s},setpts=PTS-STARTPTS,fps={FPS},format=yuv420p[v2];"
-        f"[0:a]atrim=start={at_s},asetpts=PTS-STARTPTS,aresample=48000[a2];"
-        f"[a1]aformat=channel_layouts=stereo[a1s];[a2]aformat=channel_layouts=stereo[a2s];"
-        f"[v1][a1s][mv][ma][v2][a2s]concat=n=3:v=1:a=1[v][a]")
+        f"[0:a]atrim=start={at_s},asetpts=PTS-STARTPTS,aresample=48000,aformat=channel_layouts=stereo[a2];"
+        f"[v1][a1][cv][ca][v2][a2]concat=n=3:v=1:a=1[v][a]")
     command = ["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-i", video_path,
-               "-stream_loop", "-1" if meme_name.lower().endswith(".gif") else "0", "-i", meme_path,
-               "-filter_complex", filter_graph, "-map", "[v]", "-map", "[a]",
+               "-stream_loop", "-1" if cutaway_path.lower().endswith(".gif") else "0", "-i", cutaway_path,
+               "-filter_complex", graph, "-map", "[v]", "-map", "[a]",
                "-c:v", "libx264", "-preset", "veryfast", "-crf", "18", "-threads", settings.FFMPEG_THREADS,
                "-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart", output_path]
     return subprocess.run(command).returncode == 0

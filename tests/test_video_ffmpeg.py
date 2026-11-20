@@ -111,6 +111,41 @@ class VideoPipelineTest(TempRepoTestCase):
         self.assertEqual(leftovers, [])
         self.assertTrue(os.path.exists(os.path.join(paths.QUEUE_DIR, "twitch_test_2.json")))
 
+    def test_gemini_beat_sheet_renders(self):
+        from clipwatcher.render import beats as beat_module, copywriting
+        os.makedirs(paths.RAW_CLIPS_DIR, exist_ok=True)
+        raw_path = os.path.join(paths.RAW_CLIPS_DIR, "twitch_test_3.mp4")
+        make_test_video(raw_path, 20, size="180x320", loud_at_s=12.0)
+        os.makedirs(paths.MEMES_DIR, exist_ok=True)
+        make_test_video(os.path.join(paths.MEMES_DIR, "crying-guy.mp4"), 2, size="200x150")
+        transcript = {"text": "no way bro", "segments": [{"words": [
+            {"word": " no", "start": 1.0, "end": 1.3, "probability": 0.9},
+            {"word": " way", "start": 1.3, "end": 1.6, "probability": 0.9}]}]}
+        reply = {"hook": "PEAK GTA 6 NPC MOMENT", "emphasis": "PEAK", "title": "xQc vs NPC in GTA 6 😭",
+                 "comment": "Who wins? 😭", "beats": [
+                     {"at": 1.3, "kind": "sound", "value": "impact/punch"},
+                     {"at": 1.3, "kind": "emoji", "value": "skull"},
+                     {"at": 3.0, "kind": "text_card", "value": "nobody cares", "duration": 0.8},
+                     {"at": 4.5, "kind": "sticker", "value": "crying-guy.mp4", "duration": 1.5},
+                     {"at": 6.0, "kind": "meme", "value": "crying-guy.mp4", "duration": 1.0},
+                     {"at": 7.0, "kind": "emoji", "value": "fire"},
+                     {"at": 8.5, "kind": "zoom", "value": ""},
+                     {"at": 9.0, "kind": "made-up-kind", "value": "x"}]}
+        job = pipeline.ClipJob(clip_name="twitch_test_3", raw_path=raw_path, source_url="https://twitch.tv/xqc",
+                               stream_info={"creator": "xqc", "game": "Grand Theft Auto VI"},
+                               length_s=10, spike_at_s=14, seam_y=120)
+        with mock.patch.object(settings, "GEMINI_API_KEY", "key"), \
+                mock.patch.object(copywriting, "ask_gemini_json", return_value=reply), \
+                mock.patch.object(pipeline, "transcribe_window", return_value=transcript):
+            queue_item = pipeline.process_clip(job)
+        final_path = os.path.join(paths.READY_CLIPS_DIR, "twitch_test_3.mp4")
+        self.assertAlmostEqual(duration_s(final_path), 10 + 0.8 + 1.0, delta=0.6)  # + card + meme
+        self.assertAlmostEqual(integrated_loudness(final_path), settings.LOUDNESS_LUFS, delta=2.0)
+        self.assertEqual(queue_item["hook"], "PEAK GTA 6 NPC MOMENT")
+        self.assertEqual(queue_item["comment"], "Who wins? 😭")
+        leftovers = [name for name in os.listdir(paths.READY_CLIPS_DIR) if ".work" in name or name.endswith(".ass")]
+        self.assertEqual(leftovers, [])
+
     def test_builtin_sounds_generate(self):
         for name in sound_design.BUILTIN_SOUNDS:
             self.assertGreater(duration_s(sound_design.builtin_sound(name)), 0.3)

@@ -25,9 +25,10 @@ scripts/run.sh  (one per machine; systemd runs it on servers)
             chat.py -> spike_detector.py -> facecam.py + clip_cutter.py (31 s search window, split layout)
                 -> clips/raw/<clip>.mp4
             render/pipeline.py: moment_finder (loudest peak -> 15 s window) -> transcriber
-                -> copywriting (Gemini watches frames, picks from the kit) -> video_effects
-                (trim, colour, zoom/shake/flash, emoji, hook box, captions, credit) -> memes
-                -> sound_design (peak sound, reaction sound, music ducking, -14 LUFS)
+                -> copywriting (Gemini watches a frame grid, plans the BEAT SHEET from the kit)
+                -> video_effects (trim, colour, zoom beats, emoji/sticker beats, hook, captions,
+                credit) -> sound beats -> cutaways (text cards, memes; last first)
+                -> sound_design (ducked music, -14 LUFS + loudness correction)
                 -> clips/ready/<clip>.mp4/.srt/.txt
                 -> clips/queue/<clip>.json   (or post immediately if no schedule)
 ```
@@ -60,12 +61,14 @@ scripts/run.sh  (one per machine; systemd runs it on servers)
 | `render/pipeline.py` | `ClipJob` + `process_clip()`: runs every render step in order, writes the queue item (format documented there). |
 | `render/moment_finder.py` | Loudness envelope -> peak + onset -> which `LENGTH` window to keep. Pure math + one ffmpeg call. |
 | `render/transcriber.py` | Whisper on just the final window, with GTA/streamer vocabulary hints. |
-| `render/copywriting.py` | `ClipCopy`: one Gemini call (contact sheet of frames + transcript + full sound/emoji/meme menus) -> hook, emphasis, title, peak_sound, reaction_sound, emoji, meme, comment. Template fallback without a key. |
+| `render/copywriting.py` | `ClipCopy`: one Gemini call (time-stamped frame grid + word-timed transcript + full sound/emoji/meme menus) -> hook, emphasis, title, comment and the beat sheet. Template fallback without a key. |
+| `render/beats.py` | `Beat` (sound, emoji, zoom, text_card, meme, sticker) + `validate_beats` (menus, times, limits, cutaway spacing) + the single-peak fallback. |
+| `render/text_cards.py` | White meme text cards ("nobody cares") rendered as short clips with an optional sound. |
 | `render/subtitles.py` | 1-2 word caption chunks (low-confidence words dropped, swearing censored), styled `.ass`: hook box on the seam, captions, credit. Pure logic. |
-| `render/video_effects.py` | ffmpeg: one pass for trim + colour + zoom/shake/flash + emoji overlay + subtitles; meme splice. |
+| `render/video_effects.py` | ffmpeg: one pass for trim + colour + zoom/shake/flash at every zoom beat + emoji/sticker overlays + subtitles; `insert_cutaway` splices a meme (letterboxed) or card. |
 | `render/sound_design.py` | Sound menu (kit catalog + `sounds/sfx/`), resolves a category to a file, mixes sounds + ducked music + loudness. |
 | `render/emojis.py` | Lists `assets/emoji/*.webm`; keyword fallback. |
-| `render/memes.py` | Lists `memes/`; applies `MEME_CHANCE`; keyword fallback. |
+| `render/memes.py` | Meme library: `memes/catalog.json` ("use when" per meme), `add_meme` importer (trim, normalize, Gemini describes it). |
 | **`clipwatcher/publish/`** | **Stage 3**: getting clips posted. |
 | `publish/post_text.py` | Caption text, hashtags per platform, creator aliases, game tags, YouTube title. |
 | `publish/poster.py` | `post_clip()` to platforms now; `usable_targets()` = which platforms are set up. |
@@ -80,12 +83,12 @@ scripts/run.sh  (one per machine; systemd runs it on servers)
 | `scripts/run.sh` | Starts the scheduler + one watch loop per channel, forever. |
 | `scripts/watch-channel.sh` | Records one channel into the rolling buffer and runs `channel_watcher`. |
 | `scripts/setup-server.sh` | Fresh Ubuntu server: install + systemd service `clip-watcher`. |
-| `assets/fonts/` | Bundled Anton font (OFL). |
+| `assets/fonts/` | Anton (hook/captions, OFL) + DejaVu Sans/Serif Bold (text cards, free license). |
 | `assets/sound_kit/<group>/<category>/` | 443 CC0 sounds, grouped by WHEN to use them (impact, fail, win, hype, danger, comedy, transition, money). `catalog.json` = "use when" per category (what Gemini reads); `README.md` = same table. Generated: rebuild, don't hand-edit. |
 | `assets/emoji/<name>.webm` | 141 animated Noto emojis (VP9 with transparency, CC BY 4.0). Generated. |
 | `assets/CREDITS.md` | Sources and licenses of everything in `assets/`. |
 | `sounds/sfx/`, `sounds/music/` | User's own sounds (added to Gemini's menu as `custom/...`) and background music. |
-| `memes/` | User-supplied reaction meme videos (named by what they show). |
+| `memes/` | User's reaction meme library (git-ignored except README). Add with `python3 -m clipwatcher add-meme`. |
 | `docs/` | `viral-playbook.md` (why everything is built this way), `setup-youtube.md`, `setup-meta.md`, `server.md`. |
 | `tests/` | `unittest` suite, incl. a real ffmpeg end-to-end test. |
 
@@ -102,6 +105,7 @@ Runtime data (git-ignored, created by the code): `rec/` (rolling buffers), `clip
 | change what Gemini decides or the hook/title style | `render/copywriting.py` (`build_prompt`, fallbacks) + `docs/viral-playbook.md` |
 | add or re-describe sounds | `media_kit.py` `CATEGORY_GUIDE` / `SYNTH_SOUNDS`, then `python3 -m clipwatcher build-kit sounds` |
 | change the zoom/shake/flash/emoji pop | `render/video_effects.py` |
+| add a new beat kind | `render/beats.py` (KINDS, limits) + `copywriting.build_prompt` + `pipeline.process_clip` |
 | add a streaming platform | `capture/chat.py` (`CHAT_READERS`) + URL mapping in `scripts/watch-channel.sh` |
 | change caption / hook box look | `render/subtitles.py` (`write_ass`) |
 | change the layout (split/crop/fit) | `capture/clip_cutter.py` (`vertical_filter`), `capture/facecam.py` |

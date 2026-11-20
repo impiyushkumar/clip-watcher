@@ -19,6 +19,22 @@ anything happened, gibberish transcript fragments as the hook and the title ("1 
 AM AGO..."), blurred "fit" layout with the gameplay under 35% of the screen and a tiny facecam,
 wrong captions, and no sound design.
 
+## Meme-dense edits (the "hooky" style)
+A reference edit the owner shared (a cooking vlog, 41 s) had **about 15 meme beats**: a cutaway
+every 1–2 s, each one synced to a word or an action, escalating to the payoff:
+- **match cuts:** juggling ingredients → clown juggling, hands on hips → lion in the same pose,
+  holding up a board → soldier holding a shield
+- **white text cards** for ~1 s: "I need help.", "who cares?", "Emotionally cooked", "nobody cares"
+- **picture-in-picture stickers** and small labels ("Cooking Vlog", "UNDER PRESSURE")
+- **reaction memes with their own audio** (screams, a disgusted face, an explosion) right after the line they react to
+- VFX overlays (fire, smoke) on dramatic moments
+
+clip-watcher turns this into a **beat sheet** (`render/beats.py`): Gemini watches a frame grid
+(every 1.5 s, time-stamped) and the word-timed transcript, then plans 4–10 beats across the
+clip (sound, emoji, zoom, text_card, meme, sticker) from the full kit and your meme library.
+Text cards are generated (no copyright issues); meme videos come from your own `memes/`
+library (`python3 -m clipwatcher add-meme`).
+
 ## The formula (all automated)
 
 | # | Rule | Where in the code |
@@ -29,9 +45,9 @@ wrong captions, and no sound design.
 | 4 | **Hook box** = context, not a quote. CONTEXT / POV / PEAK formats, names streamer + "GTA 6", one red word | `render/copywriting.py` |
 | 5 | **Title** = streamer + what happened + "GTA 6" + 1–2 emojis (😭 💀 😳 ✌️) | `copywriting.py`, `publish/post_text.py` |
 | 6 | **1–2 word captions**, bold, the words on the peak in yellow and bigger, swearing censored (monetization) | `render/subtitles.py` |
-| 7 | **Hit the peak frame**: zoom punch + shake + white flash + a sound that fits + an animated emoji | `render/video_effects.py`, `render/sound_design.py` |
+| 7 | **Hit the peak frame**: zoom punch + shake + white flash + a sound that fits + an animated emoji (always, even without Gemini) | `render/video_effects.py`, `pipeline.complete_beats` |
 | 8 | **The sound must fit the moment** (punch for a hit, siren for cops, "mission failed" for a death). Gemini watches frames and picks from the whole kit | `assets/sound_kit/catalog.json`, `copywriting.build_prompt` |
-| 9 | Optional reaction sound after the peak, meme cutaway only when it clearly fits | `copywriting`, `render/memes.py` |
+| 9 | Beats across the whole clip (sounds, emojis, zooms, text cards, memes, stickers), each synced to a word or action | `render/beats.py`, `copywriting.build_prompt`, `pipeline.process_clip` |
 | 10 | Music low and ducked under the voice (often none is best) | `MUSIC_VOLUME`, `sounds/music/` |
 | 11 | Loudness −14 LUFS (what Shorts/TikTok normalize to; quieter clips sound weak) | `LOUDNESS` |
 | 12 | "SOURCE: TWITCH.TV/XQC" credit on screen (campaigns require it, and it builds trust) | `pipeline.source_credit` |

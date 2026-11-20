@@ -15,6 +15,9 @@ Commands:
     post-now                 post the best queued clip to every platform once
     rerender [--drop-missing]  re-render queued clips in the current style
     build-kit [sounds|emoji] rebuild assets/sound_kit + assets/emoji (legal meme sounds/emojis)
+    add-meme <file|URL> [--name x] [--start s] [--end s] [--use-when "..."]
+                             import a reaction meme into memes/ (Gemini describes it)
+    memes                    list memes/ with their "use when" descriptions
 """
 import sys
 
@@ -64,6 +67,21 @@ def main(argv):
     elif command == "build-kit":
         from clipwatcher.media_kit import build_kit
         build_kit(tuple(options) or ("sounds", "emoji"))
+    elif command == "add-meme":
+        import argparse
+        from clipwatcher.render.memes import add_meme
+        parser = argparse.ArgumentParser(prog="python3 -m clipwatcher add-meme")
+        parser.add_argument("source")
+        parser.add_argument("--name")
+        parser.add_argument("--start", type=float)
+        parser.add_argument("--end", type=float)
+        parser.add_argument("--use-when")
+        meme_args = parser.parse_args(options)
+        add_meme(meme_args.source, meme_args.name, meme_args.start, meme_args.end, meme_args.use_when)
+    elif command == "memes":
+        from clipwatcher.render.memes import meme_menu
+        for name, use_when in meme_menu().items():
+            print(f"{name}: {use_when}")
     elif command == "rerender":
         from clipwatcher.rerender import rerender_queue
         rerender_queue(drop_missing="--drop-missing" in options)

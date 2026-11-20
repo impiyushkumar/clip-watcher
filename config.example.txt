@@ -47,8 +47,8 @@ CW_FONT=Anton                # [FONT_NAME] font family in assets/fonts/
 SFX_VOLUME=0.9               # [SFX_VOLUME] sound on the peak
 MUSIC_VOLUME=0.12            # [MUSIC_VOLUME] background music from sounds/music/, 0 = off
 LOUDNESS=-14                 # [LOUDNESS_LUFS] final loudness (Shorts/TikTok standard)
-MEME_CHANCE=0.4              # [MEME_CHANCE] share of clips that may cut to a meme from memes/
-MEME_SECONDS=1.8             # [MEME_SECONDS] meme length
+MEME_CHANCE=0.4              # [MEME_CHANCE] without Gemini: share of clips that cut to a keyword-matched meme
+MEME_SECONDS=1.8             # [MEME_SECONDS] default meme cutaway length (Gemini sets its own per beat)
 
 # ---- captions and posting ---------------------------------------------------------
 TAGS='#gta6 #shorts'         # [HASHTAGS] your own hashtags (+ campaign tags)
