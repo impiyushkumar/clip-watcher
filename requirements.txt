@@ -1,0 +1,10 @@
+# Python packages for clip-watcher (installed by scripts/install.sh into .venv/).
+# ffmpeg is a system package, installed separately by scripts/install.sh.
+streamlink          # records the live stream
+openai-whisper      # speech-to-text for captions (pulls in torch)
+chat-downloader     # YouTube live chat
+websocket-client    # Kick chat
+curl_cffi           # Kick API behind Cloudflare
+requests            # Gemini + Meta Graph API
+google-api-python-client  # YouTube upload/stats
+google-auth-oauthlib      # YouTube login
