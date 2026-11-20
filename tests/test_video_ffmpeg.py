@@ -128,7 +128,7 @@ class VideoPipelineTest(TempRepoTestCase):
                      {"at": 1.3, "kind": "emoji", "value": "skull", "reason": "r", "visual": "v"},
                      {"at": 3.0, "kind": "text_card", "value": "nobody cares", "duration": 0.8, "reason": "r", "visual": "v"},
                      {"at": 4.5, "kind": "sticker", "value": "crying-guy.mp4", "duration": 1.5, "reason": "r", "visual": "v"},
-                     {"at": 6.0, "kind": "meme", "value": "crying-guy.mp4", "duration": 1.0, "reason": "r", "visual": "v"},
+                     {"at": 7.5, "kind": "meme", "value": "crying-guy.mp4", "duration": 1.0, "reason": "r", "visual": "v"},
                      {"at": 7.0, "kind": "emoji", "value": "fire", "reason": "r", "visual": "v"},
                      {"at": 8.5, "kind": "zoom", "value": ""},
                      {"at": 9.0, "kind": "made-up-kind", "value": "x"}]}
@@ -140,7 +140,7 @@ class VideoPipelineTest(TempRepoTestCase):
                 mock.patch.object(pipeline, "transcribe_window", return_value=transcript):
             queue_item = pipeline.process_clip(job)
         final_path = os.path.join(paths.READY_CLIPS_DIR, "twitch_test_3.mp4")
-        self.assertAlmostEqual(duration_s(final_path), 10 + 0.8 + 1.0, delta=0.6)  # + card + meme
+        self.assertAlmostEqual(duration_s(final_path), 10 + 0.8 + 2.0, delta=0.6)  # + card + FULL 2 s meme
         self.assertAlmostEqual(integrated_loudness(final_path), settings.LOUDNESS_LUFS, delta=2.0)
         self.assertEqual(queue_item["hook"], "PEAK GTA 6 NPC MOMENT")
         self.assertEqual(queue_item["comment"], "Who wins? 😭")
