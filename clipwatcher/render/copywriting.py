@@ -213,7 +213,7 @@ def build_prompt(timed_words, stream_info, sound_menu, emoji_names, meme_menu, l
         "happens) - if nothing in the menu truly fits, skip it; never place one just to fill time. Always a "
         "sound + zoom on the peak. No two cutaways within 1.2 s; no cutaways before 1.0 s. The first 2 seconds decide "
         "whether people swipe away: put a strong, justified beat in them. Keep the pace: no stretch longer than ~3 s "
-        "without a beat, as long as the clip gives you a reason. One sound per joke. MEMES: use 1-3 per clip at most (0 is fine), only perfect fits, at least 3 s apart; each meme plays its WHOLE reaction (its full length), so place it where the clip can pause for it, never in the middle of an important line. Many people watch MUTED, so "
+        "without a beat, as long as the clip gives you a reason. One sound per joke. MEMES: YOU decide how many this clip needs - one perfect meme or ten, whatever makes THIS clip funniest (0 is fine too); every one must truly fit its moment; each meme plays its WHOLE reaction (its full length), so place it where the clip can pause for it, never in the middle of an important line. Many people watch MUTED, so "
         "text cards and emojis must make the joke readable without sound.\n"
         "Sound menu (category: use when):\n" + sounds + "\n"
         "Meme menu (file: use when):\n" + memes + "\n"

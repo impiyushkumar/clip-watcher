@@ -59,10 +59,11 @@ pack in `packs/reaction-memes.txt`) fill the private library: `import-sounds`, `
 | 12 | "SOURCE: TWITCH.TV/XQC" credit on screen (campaigns require it, and it builds trust) | `pipeline.source_credit` |
 | 13 | Colour boost + sharpen (stream rips look flat on phones) | `COLOR_BOOST` |
 
-## Meme restraint (owner feedback)
-Fewer, better memes: **at most 3 per clip** (0 is fine), at least 3 s apart, only perfect fits.
-**A meme always plays its whole reaction** (its key moment, trimmed on import): cutting it short
-kills the joke. A meme near the end holds the clip's last frame until it finishes.
+## Meme count and length (owner feedback)
+**No fixed limit:** Gemini decides how many memes each clip gets (one perfect meme or ten), as
+long as every one truly fits its moment; zero is fine too. **A meme always plays its whole
+reaction** (its key moment, trimmed on import): cutting it short kills the joke. A meme near the
+end holds the clip's last frame until it finishes.
 
 ## Timing rules from practitioner research (Nov 2026)
 Mostly editor and vendor guides, not controlled studies, so treat them as strong defaults:
