@@ -45,7 +45,7 @@ CW_FONT=Anton                # [FONT_NAME] font family in assets/fonts/
 
 # ---- sound (kit: assets/sound_kit/, yours: sounds/sfx/ + sounds/music/) -------------
 SFX_VOLUME=0.9               # [SFX_VOLUME] sound on the peak
-MUSIC_VOLUME=0.12            # [MUSIC_VOLUME] background music from sounds/music/, 0 = off
+MUSIC_VOLUME=0               # [MUSIC_VOLUME] background music: 0 = off (memes + sounds only)
 LOUDNESS=-14                 # [LOUDNESS_LUFS] final loudness (Shorts/TikTok standard)
 MEME_CHANCE=0.4              # [MEME_CHANCE] without Gemini: share of clips that cut to a keyword-matched meme
 MEME_SECONDS=1.8             # [MEME_SECONDS] default meme cutaway length (Gemini sets its own per beat)

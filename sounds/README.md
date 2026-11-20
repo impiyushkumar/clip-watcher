@@ -3,7 +3,7 @@
     sounds/sfx/<group>/<name>.mp3   meme sounds, grouped like the kit: impact, fail, win, hype,
                                     danger, comedy, transition, money, reaction, quote
     sounds/sfx/catalog.json         title + "use when" per sound (Gemini reads it)
-    sounds/music/                   background tracks; one random track per clip at MUSIC_VOLUME
+    sounds/music/                   optional background tracks (off by default: MUSIC_VOLUME=0)
 
 Fill it with one command (1,000+ meme sounds from MyInstants: vine boom, bruh, fahhh,
 airhorn, metal pipe, GTA wasted…), then Gemini sorts them into groups and describes them:

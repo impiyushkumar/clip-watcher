@@ -48,7 +48,7 @@ pack in `packs/reaction-memes.txt`) fill the private library: `import-sounds`, `
 | 7 | **Hit the peak frame**: zoom punch + shake + white flash + a sound that fits + an animated emoji (always, even without Gemini) | `render/video_effects.py`, `pipeline.complete_beats` |
 | 8 | **The sound must fit the moment** (punch for a hit, siren for cops, "mission failed" for a death). Gemini watches frames and picks from the whole kit | `assets/sound_kit/catalog.json`, `copywriting.build_prompt` |
 | 9 | Beats across the whole clip (sounds, emojis, zooms, text cards, memes, stickers), each synced to a word or action | `render/beats.py`, `copywriting.build_prompt`, `pipeline.process_clip` |
-| 10 | Music low and ducked under the voice (often none is best) | `MUSIC_VOLUME`, `sounds/music/` |
+| 10 | No background music: only memes, meme sounds and the stream audio (music can be turned on with `MUSIC_VOLUME`) | `MUSIC_VOLUME=0` |
 | 11 | Loudness −14 LUFS (what Shorts/TikTok normalize to; quieter clips sound weak) | `LOUDNESS` |
 | 12 | "SOURCE: TWITCH.TV/XQC" credit on screen (campaigns require it, and it builds trust) | `pipeline.source_credit` |
 | 13 | Colour boost + sharpen (stream rips look flat on phones) | `COLOR_BOOST` |
