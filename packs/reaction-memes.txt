@@ -39,3 +39,11 @@ huh cat meme | huh-cat | confused "huh?"
 skeleton waiting meme | skeleton-waiting | waiting forever, slow loading
 spongebob imagination meme | imagination | wild idea, fantasy
 monkey puppet look away meme | monkey-look-away | awkward moment, pretending not to see
+# more trending reactions
+michael rosen noice meme | noice | something smooth or satisfying happens, a clean move
+laughing meme green screen guy laughing hysterically | laughing-hysterically | something is extremely funny
+fahhh meme green screen | fahhh | a painful fail, getting hit, an embarrassing mistake
+metal pipe falling meme | metal-pipe | something falls or crashes loudly, sudden chaos
+oh hell nah meme green screen | oh-hell-nah | refusing something crazy, disgust
+bruh moment meme green screen | bruh-moment | a dumb or disappointing move
+wait what meme green screen | wait-what | double take, can't believe it
