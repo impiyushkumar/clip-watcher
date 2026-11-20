@@ -52,6 +52,7 @@ Manual tasks (run from the repo folder; on a server use `.venv/bin/python`):
 | `python3 -m clipwatcher learn` | relearn now, print `clips/learning.md` |
 | `python3 -m clipwatcher post-now` | post the best queued clip everywhere, once |
 | `python3 -m clipwatcher rerender` | re-render queued clips in the current style |
+| `python3 -m clipwatcher build-kit` | rebuild the bundled sound + emoji kit |
 
 ## How it works
 1. `streamlink` records the stream as 10 s pieces in `rec/`. Only the last `KEEP_MINUTES`
@@ -69,6 +70,7 @@ Manual tasks (run from the repo folder; on a server use `.venv/bin/python`):
 - [YouTube Shorts upload](docs/setup-youtube.md)
 - [Instagram + Facebook Reels upload](docs/setup-meta.md)
 - [Run 24/7 on a server](docs/server.md) (Google Cloud / any Ubuntu VPS, small-server tuning)
+- **[Viral playbook](docs/viral-playbook.md): why clips go viral, distribution, who to clip, copyright**
 
 ## Watch several streamers at once
 ```
@@ -77,16 +79,18 @@ CHANNELS='kaicenat,ohnepixel,kick:n3on'
 Each channel is watched in parallel and all clips go into one queue. A 2-CPU server handles about
 3 channels. Restart after changing: `sudo systemctl restart clip-watcher`.
 
-## Clip style
-- **Format:** full-screen 9:16 (`LAYOUT=crop`) or the whole frame over a blurred background
-  (`LAYOUT=fit`), at `RES` (default 1080×1920). `QUALITY='best'` records the sharpest source.
-- **Hook:** big **Anton** text at the top (bundled in `assets/fonts/`, SIL OFL). `HOOK=0` turns it off.
-- **Captions:** 1-3 words at a time that pop in, alternating white and yellow.
-- **Zoom punch** on the hype moment. `ZOOM=0` turns it off.
-- **Meme cutaways:** put short reaction memes in `memes/` (see [memes/README.md](memes/README.md)).
-  About 60% of clips (`MEME_CHANCE`) cut to a fitting meme for ~2 s right after the hype moment.
-- **AI hooks (optional):** add `GEMINI_API_KEY='...'` to `config.txt` and Gemini writes a meme-style
-  hook and picks the meme. Without a key it uses the transcript. Never commit the key.
+## Clip style (built from vidIQ research on viral GTA 6 clips, see [docs/viral-playbook.md](docs/viral-playbook.md))
+- **Length and timing:** 15 s (`LENGTH`). The editor finds the loudest reaction in the audio, starts right on the action and hard-cuts 2.5 s after the peak so the clip loops.
+- **Layout:** the streamer's facecam big on top, gameplay below (`LAYOUT=split`). Gemini finds the webcam automatically, or you set it with `FACECAMS`.
+- **Hook box:** black text in a white box on the seam, with one word in red. It gives context ("N3ON REALLY MESSED UP AFTER HE LEAKED GTA 6 LIVE"), a POV, or "PEAK GTA 6 MOMENT", never transcript gibberish.
+- **Captions:** 1–2 words at a time. The words on the peak are yellow and bigger, and swearing is censored.
+- **On the peak:** zoom punch, camera shake, white flash, an animated emoji (😭 💀 😳…) and a sound that fits the moment.
+- **Sound kit:** 443 CC0 sounds in `assets/sound_kit/`, grouped by when to use them: impact, fail ("mission failed", sad trombone), win, hype (airhorn, "fight!"), danger (siren), comedy (record scratch, sexy sax), transition and money. Add your own in `sounds/sfx/`, plus music in `sounds/music/` (ducked under the voice). Final loudness is −14 LUFS.
+- **Gemini watches every clip** (frames + transcript) and picks the hook, title, peak sound, reaction sound, emoji, meme and a first comment from the whole kit. Add `GEMINI_API_KEY='...'` to `config.txt` (free at https://aistudio.google.com/apikey). It's the single biggest quality jump. Without it, clean templates are used. Never commit the key.
+- **Memes:** short reaction videos in `memes/` (see [memes/README.md](memes/README.md)), used only when one clearly fits.
+- **Credit:** "SOURCE: TWITCH.TV/XQC" in the corner (clipping campaigns require one).
+- **Re-render old clips** in the current style: `sudo systemctl stop clip-watcher && .venv/bin/python -m clipwatcher rerender && sudo systemctl start clip-watcher`
+- **Rebuild the kit:** `python3 -m clipwatcher build-kit`
 
 ## Disk use
 Raw cuts are deleted as soon as the finished clip is made. Every clip stays in the queue **until

@@ -14,6 +14,7 @@ Commands:
     pick-length [default]    clip length for the next stream (used by scripts/run.sh)
     post-now                 post the best queued clip to every platform once
     rerender [--drop-missing]  re-render queued clips in the current style
+    build-kit [sounds|emoji] rebuild assets/sound_kit + assets/emoji (legal meme sounds/emojis)
 """
 import sys
 
@@ -60,6 +61,9 @@ def main(argv):
     elif command == "post-now":
         from clipwatcher.publish import scheduler
         scheduler.main(["--once"] + options)
+    elif command == "build-kit":
+        from clipwatcher.media_kit import build_kit
+        build_kit(tuple(options) or ("sounds", "emoji"))
     elif command == "rerender":
         from clipwatcher.rerender import rerender_queue
         rerender_queue(drop_missing="--drop-missing" in options)

@@ -6,7 +6,7 @@
     python3 -m clipwatcher post-now                                 # best clip everywhere, once
 
 When a platform is due it gets the best clip it hasn't had yet: manual picks first,
-then the biggest chat spike. A clip moves to queue/posted/ once every platform has it,
+then the biggest chat spike, weighted by freshness (half-life FRESHNESS_HALF_LIFE_H). A clip moves to queue/posted/ once every platform has it,
 or to queue/expired/ when it is older than --max-age hours (0 = never).
 learner.py runs twice a day; posts wait for a good hour (at most one extra interval).
 """
@@ -25,6 +25,16 @@ from clipwatcher.publish.poster import post_clip, resolve_path, split_targets, u
 CLEANUP_EVERY_S = 600
 RELEARN_EVERY_S = 12 * 3600
 DEFAULT_POST_EVERY_H = 4
+FRESHNESS_HALF_LIFE_H = 6        # a clip's chat score counts half after 6 h: trends move fast
+MANUAL_CLIP_SCORE = 10 ** 6      # Enter-key picks always go first
+
+
+def ranking_value(queue_item, now_ts=None):
+    """How much we want to post this clip now: manual picks first, then chat score
+    weighted by freshness (in launch week a fresh clip beats a slightly better old one)."""
+    age_h = max(0.0, ((now_ts or time.time()) - queue_item["created_ts"]) / 3600)
+    is_manual = queue_item["score"] >= MANUAL_CLIP_SCORE
+    return (is_manual, queue_item["score"] * 0.5 ** (age_h / FRESHNESS_HALF_LIFE_H))
 
 
 def parse_args(argv=None):
@@ -78,12 +88,11 @@ class Scheduler:
 
     def post_best_to(self, platform):
         """Post the best clip `platform` hasn't had. Returns False if there was none."""
-        candidates = [(queue_item["score"], queue_item["created_ts"], json_path, queue_item)
-                      for json_path, queue_item in self.waiting_items()
+        candidates = [(json_path, queue_item) for json_path, queue_item in self.waiting_items()
                       if platform not in queue_item.get("posted_to", {})]
         if not candidates:
             return False
-        _score, _created_ts, json_path, queue_item = max(candidates, key=lambda entry: entry[:2])
+        json_path, queue_item = max(candidates, key=lambda entry: ranking_value(entry[1]))
         log(f"[{platform}] posting {queue_item['clip']} (score {queue_item['score']}): {queue_item['hook']}")
         urls = post_clip(queue_item, platform, self.hashtags, self.privacy)
         queue_item.setdefault("posted_to", {})[platform] = urls.get(platform, "failed")

@@ -18,8 +18,10 @@ import time
 
 from clipwatcher import settings
 from clipwatcher.capture import chat
-from clipwatcher.capture.clip_cutter import cut_raw_clip
-from clipwatcher.capture.recording_buffer import delete_old_segments_forever, wait_for_first_segment
+from clipwatcher.capture.clip_cutter import cut_raw_clip, split_heights
+from clipwatcher.capture.facecam import facecam_box
+from clipwatcher.capture.recording_buffer import (delete_old_segments_forever, list_segments,
+                                                  wait_for_first_segment)
 from clipwatcher.capture.spike_detector import SpikeDetector
 from clipwatcher.heavy_job import heavy_job_slot
 from clipwatcher.log import log
@@ -45,7 +47,6 @@ def parse_args():
                         help="none, or any of youtube,instagram,facebook (comma separated)")
     parser.add_argument("--privacy", default=settings.PRIVACY, choices=["public", "unlisted", "private"])
     parser.add_argument("--tags", default=settings.HASHTAGS)
-    parser.add_argument("--hook", default="wait for it...", help="hook text when nobody talks")
     parser.add_argument("--source-url", default="")
     parser.add_argument("--queue", action="store_true",
                         help="don't post now; add to clips/queue/ for the scheduler")
@@ -86,23 +87,25 @@ def main():
     args = parse_args()
     channel = args.channel if args.platform == "youtube" else args.channel.lower().lstrip("#")
     safe_channel = "".join(char for char in channel if char.isalnum() or char in "_-")[-40:] or "clip"
-    before_s = max(3, round(args.length * 2 / 3))
-    after_s = max(2, args.length - before_s)
+    # cut a wide window around each spike; render/moment_finder.py trims it to the real peak
+    before_s = max(args.length, settings.SEARCH_BEFORE_S)
+    after_s = settings.SEARCH_AFTER_S
     source_url = args.source_url or f"{args.platform}: {channel}"
     stream_info = fetch_stream_info(args.source_url, channel)
     log(f"stream: {stream_info.get('creator')} | {stream_info.get('game') or '?'}")
-    log(f"clips: {before_s}s before + {after_s}s after each spike; upload: {args.upload}")
+    log(f"clips: {args.length}s around the peak (searched {before_s}s before + {after_s}s after "
+        f"each spike); upload: {args.upload}")
 
     pending = PendingCounter()
-    render_queue = queue.Queue()  # (raw_path, clip_name, score), rendered one at a time
+    render_queue = queue.Queue()  # (raw_path, clip_name, score, seam_y), rendered one at a time
 
     def render_worker():
         while True:
-            raw_path, clip_name, score = render_queue.get()
+            raw_path, clip_name, score, seam_y = render_queue.get()
             try:
                 job = ClipJob(clip_name=clip_name, raw_path=raw_path, source_url=source_url,
-                              stream_info=stream_info, hashtags=args.tags, hook_fallback=args.hook,
-                              length_s=before_s + after_s, spike_at_s=before_s, score=score,
+                              stream_info=stream_info, hashtags=args.tags, seam_y=seam_y,
+                              length_s=args.length, spike_at_s=before_s, score=score,
                               whisper_model=args.model, upload_targets=args.upload,
                               privacy=args.privacy, queue_for_schedule=args.queue)
                 with heavy_job_slot():
@@ -118,10 +121,19 @@ def main():
     threading.Thread(target=delete_old_segments_forever,
                      args=(args.rec, settings.BUFFER_MINUTES * 60), daemon=True).start()
 
+    def current_facecam_box():
+        segments = [segment for segment in list_segments(args.rec) if os.path.exists(segment[0])]
+        if settings.LAYOUT != "split" or not segments:
+            return None
+        return facecam_box(safe_channel, segments[-1][0])
+
     def cut_and_enqueue(spike_ts, clip_name, score):
-        raw_path = cut_raw_clip(args.rec, recording_start_ts, spike_ts, clip_name, before_s, after_s)
+        box = current_facecam_box()
+        raw_path = cut_raw_clip(args.rec, recording_start_ts, spike_ts, clip_name, before_s, after_s,
+                                facecam_box=box)
+        seam_y = split_heights(settings.output_size()[1])[0] if box else None
         if raw_path:
-            render_queue.put((raw_path, clip_name, score))
+            render_queue.put((raw_path, clip_name, score, seam_y))
         else:
             pending.change(-1)
 

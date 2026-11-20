@@ -34,12 +34,12 @@ def rerender_queue(drop_missing=False):
             else:
                 log(f"skip (no raw cut): {clip_name}")
             continue
-        length_s = int(float(old_item.get("length_s") or 30))
+        old_length_s = int(float(old_item.get("length_s") or 30))
         _platform, _separator, rest = clip_name.partition("_")
         stream_info = old_item.get("meta") or {"creator": rest.rsplit("_", 2)[0], "game": ""}
         job = ClipJob(clip_name=clip_name, raw_path=raw_path, source_url=old_item.get("source", ""),
-                      stream_info=stream_info, hashtags=settings.HASHTAGS, length_s=length_s,
-                      spike_at_s=max(3, round(length_s * 2 / 3)), score=old_item.get("score", 0),
+                      stream_info=stream_info, hashtags=settings.HASHTAGS, length_s=settings.CLIP_LENGTH_S,
+                      spike_at_s=max(3, round(old_length_s * 2 / 3)), score=old_item.get("score", 0),
                       whisper_model=settings.WHISPER_MODEL, queue_for_schedule=True)
         new_item = process_clip(job)
         if new_item is None:

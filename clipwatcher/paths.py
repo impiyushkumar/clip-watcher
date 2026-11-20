@@ -14,9 +14,15 @@ YOUTUBE_CLIENT_SECRET_FILE = os.path.join(ROOT_DIR, "client_secret.json")
 YOUTUBE_TOKEN_FILE = os.path.join(ROOT_DIR, "token.json")
 META_CONFIG_FILE = os.path.join(ROOT_DIR, "meta.json")
 
-# bundled assets and user-supplied media
+# bundled assets (built by clipwatcher/media_kit.py) and user-supplied media
 FONTS_DIR = os.path.join(ROOT_DIR, "assets", "fonts")
+SOUND_KIT_DIR = os.path.join(ROOT_DIR, "assets", "sound_kit")           # <category>/<name>.mp3
+SOUND_KIT_CATALOG_FILE = os.path.join(SOUND_KIT_DIR, "catalog.json")
+EMOJI_DIR = os.path.join(ROOT_DIR, "assets", "emoji")                   # <name>.gif, animated
+ASSET_CREDITS_FILE = os.path.join(ROOT_DIR, "assets", "CREDITS.md")
 MEMES_DIR = os.path.join(ROOT_DIR, "memes")
+SFX_DIR = os.path.join(ROOT_DIR, "sounds", "sfx")             # user's impact / meme sounds
+MUSIC_DIR = os.path.join(ROOT_DIR, "sounds", "music")         # user's background tracks
 
 # runtime data (git-ignored)
 RECORDINGS_DIR = os.path.join(ROOT_DIR, "rec")               # rolling 10 s stream pieces
@@ -30,6 +36,8 @@ SCOREBOARD_FILE = os.path.join(CLIPS_DIR, "scoreboard.csv")  # one row per clip,
 AUTO_SETTINGS_FILE = os.path.join(CLIPS_DIR, "auto.json")    # what learner.py decided
 LEARNING_REPORT_FILE = os.path.join(CLIPS_DIR, "learning.md")
 HEAVY_JOB_LOCK_FILE = os.path.join(CLIPS_DIR, ".heavy.lock")
+BUILTIN_SOUNDS_DIR = os.path.join(CLIPS_DIR, ".builtin_sounds")  # generated default sounds
+FACECAM_CACHE_FILE = os.path.join(CLIPS_DIR, "facecams.json")    # detected facecam box per channel
 
 
 def queue_stamp_file(platform):

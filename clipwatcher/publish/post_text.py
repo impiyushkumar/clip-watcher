@@ -47,12 +47,12 @@ def pick_hashtags(stream_info, base_hashtags, platform="default"):
     return unique[:MAX_HASHTAGS.get(platform, MAX_HASHTAGS["default"])]
 
 
-def build_caption(hook, source_url, base_hashtags, stream_info=None, platform="default"):
-    """Hook line, creator/game line, credit, call to action, hashtags."""
+def build_caption(hook, source_url, base_hashtags, stream_info=None, platform="default", title=""):
+    """Title (or hook) line, creator/game line, credit, call to action, hashtags."""
     stream_info = stream_info or {}
     creator = creator_display_name(stream_info)
     game = stream_info.get("game") or ""
-    lines = [hook.capitalize() + (" 😳" if not hook.endswith("?") else " 👀")]
+    lines = [title or (hook.capitalize() + (" 😳" if not hook.endswith("?") else " 👀"))]
     if creator:
         playing = f" playing {game}" if game and game.lower() != "just chatting" else ""
         lines.append(f"🎮 {creator}{playing}")
@@ -62,6 +62,25 @@ def build_caption(hook, source_url, base_hashtags, stream_info=None, platform="d
     return "\n".join(lines) + "\n\n" + " ".join(pick_hashtags(stream_info, base_hashtags, platform)) + "\n"
 
 
-def youtube_title(hook, stream_info):
+def youtube_title(hook, stream_info, title=""):
+    """The written title if there is one (newer clips), else the hook + creator."""
+    if title:
+        return title[:90] + " #Shorts"
     creator = f" | {creator_display_name(stream_info)}" if stream_info.get("creator") else ""
     return (hook.capitalize()[:70] + creator)[:90] + " #Shorts"
+
+
+GAME_SEARCH_PHRASES = {
+    "grand theft auto vi": ["gta 6", "gta vi", "gta 6 funny moments", "gta 6 gameplay", "gta 6 clips",
+                            "vice city", "gta 6 streamer"],
+}
+
+
+def search_phrases(stream_info):
+    """Phrases people type into YouTube search for this clip (used as hidden tags)."""
+    creator = creator_display_name(stream_info)
+    game = (stream_info.get("game") or "grand theft auto vi").lower()
+    phrases = list(GAME_SEARCH_PHRASES.get(game, [game]))
+    if creator:
+        phrases = [creator, f"{creator} gta 6", f"{creator} clips"] + phrases
+    return phrases

@@ -11,7 +11,9 @@ from clipwatcher import paths
 from clipwatcher.publish import scoreboard
 
 SCOPES = ["https://www.googleapis.com/auth/youtube.upload",
-          "https://www.googleapis.com/auth/youtube.readonly"]
+          "https://www.googleapis.com/auth/youtube.readonly",
+          "https://www.googleapis.com/auth/youtube.force-ssl"]  # force-ssl = posting comments
+MAX_TAGS = 15
 LOGIN_PORT = 8765
 GAMING_CATEGORY_ID = "20"
 
@@ -26,8 +28,8 @@ def get_service(interactive=False):
     from google.oauth2.credentials import Credentials
     from googleapiclient.discovery import build
 
-    credentials = (Credentials.from_authorized_user_file(paths.YOUTUBE_TOKEN_FILE, SCOPES)
-                   if is_logged_in() else None)
+    # load with the scopes the token was granted (older tokens lack force-ssl; uploads still work)
+    credentials = Credentials.from_authorized_user_file(paths.YOUTUBE_TOKEN_FILE) if is_logged_in() else None
     if credentials and credentials.expired and credentials.refresh_token:
         credentials.refresh(Request())
     if not credentials or not credentials.valid:
@@ -47,14 +49,24 @@ def get_service(interactive=False):
     return build("youtube", "v3", credentials=credentials, cache_discovery=False)
 
 
-def upload_short(video_path, title, description, hashtags, privacy="public"):
+def search_tags(title, hashtags, extra_tags=()):
+    """YouTube's hidden tags: hashtags without #, plus the phrases people search for."""
+    tags = [tag.lstrip("#") for tag in hashtags.split() if tag.startswith("#")] + list(extra_tags)
+    unique = []
+    for tag in tags:
+        if tag and tag.lower() not in {existing.lower() for existing in unique}:
+            unique.append(tag)
+    return unique[:MAX_TAGS]
+
+
+def upload_short(video_path, title, description, hashtags, privacy="public", extra_tags=()):
     """Upload and return the Shorts URL."""
     from googleapiclient.http import MediaFileUpload
     youtube = get_service()
     body = {
         "snippet": {"title": title[:100], "description": description[:4900],
-                    "tags": [tag.lstrip("#") for tag in hashtags.split() if tag.startswith("#")][:15],
-                    "categoryId": GAMING_CATEGORY_ID},
+                    "tags": search_tags(title, hashtags, extra_tags), "categoryId": GAMING_CATEGORY_ID,
+                    "defaultLanguage": "en", "defaultAudioLanguage": "en"},
         "status": {"privacyStatus": privacy, "selfDeclaredMadeForKids": False},
     }
     request = youtube.videos().insert(part="snippet,status", body=body,
@@ -63,6 +75,20 @@ def upload_short(video_path, title, description, hashtags, privacy="public"):
     while response is None:
         _status, response = request.next_chunk()
     return f"https://youtube.com/shorts/{response['id']}"
+
+
+def post_comment(short_url, text):
+    """Post `text` as the first comment. Needs the force-ssl permission: run
+    `python3 -m clipwatcher youtube-login` once more if the token is older. Returns success."""
+    video_id = short_url.rstrip("/").rsplit("/", 1)[-1]
+    try:
+        get_service().commentThreads().insert(part="snippet", body={"snippet": {
+            "videoId": video_id, "topLevelComment": {"snippet": {"textOriginal": text}}}}).execute()
+        return True
+    except Exception as error:
+        hint = " (re-run: python3 -m clipwatcher youtube-login)" if "insufficient" in str(error).lower() else ""
+        print(f"first comment skipped: {error}{hint}")
+        return False
 
 
 def refresh_stats(scoreboard_path=None):

@@ -1,5 +1,6 @@
-"""End-to-end ffmpeg checks: buffer -> raw cut -> captions burned -> meme spliced.
-Skipped when ffmpeg is not installed. Uses small sizes so it runs in seconds."""
+"""End-to-end ffmpeg checks: buffer -> split-layout cut -> peak found -> edited clip with
+effects, captions and sound design. Skipped when ffmpeg is not installed. Small sizes."""
+import json
 import os
 import shutil
 import subprocess
@@ -9,91 +10,110 @@ from unittest import mock
 
 from clipwatcher import paths, settings
 from clipwatcher.capture.clip_cutter import cut_raw_clip
-from clipwatcher.render.subtitles import caption_chunks
-from clipwatcher.render.video_effects import burn_captions, insert_meme
+from clipwatcher.render import pipeline, sound_design
 from tests.helpers import TempRepoTestCase
 
 HAS_FFMPEG = shutil.which("ffmpeg") and shutil.which("ffprobe")
 
 
-def make_test_video(path, seconds, size="320x180"):
+def make_test_video(path, seconds, size="320x180", loud_at_s=None):
+    """Test pattern with a quiet tone; optionally a loud burst (the "scream") at loud_at_s."""
+    volume = (f"volume='if(between(t,{loud_at_s},{loud_at_s + 0.6}),1.0,0.05)':eval=frame"
+              if loud_at_s is not None else "volume=0.1")
     subprocess.run(["ffmpeg", "-loglevel", "error", "-y",
                     "-f", "lavfi", "-i", f"testsrc=size={size}:rate=30:duration={seconds}",
                     "-f", "lavfi", "-i", f"sine=frequency=440:duration={seconds}",
-                    "-c:v", "libx264", "-preset", "ultrafast", "-c:a", "aac", "-shortest", path], check=True)
+                    "-af", volume, "-c:v", "libx264", "-preset", "ultrafast", "-c:a", "aac", "-shortest", path],
+                   check=True)
+
+
+def probe(path, entries):
+    return subprocess.run(["ffprobe", "-v", "error", "-show_entries", entries, "-of", "json", path],
+                          capture_output=True, text=True).stdout
 
 
 def duration_s(path):
-    output = subprocess.run(["ffprobe", "-v", "error", "-show_entries", "format=duration",
-                             "-of", "csv=p=0", path], capture_output=True, text=True).stdout
-    return float(output)
+    return float(json.loads(probe(path, "format=duration"))["format"]["duration"])
+
+
+def video_size(path):
+    stream = json.loads(probe(path, "stream=width,height"))["streams"][0]
+    return stream["width"], stream["height"]
+
+
+def integrated_loudness(path):
+    output = subprocess.run(["ffmpeg", "-hide_banner", "-i", path, "-af", "ebur128", "-f", "null", "-"],
+                            capture_output=True, text=True).stderr
+    return float(output.rsplit("I:", 1)[1].split("LUFS")[0])
 
 
 @unittest.skipUnless(HAS_FFMPEG, "ffmpeg not installed")
 class VideoPipelineTest(TempRepoTestCase):
     def setUp(self):
         super().setUp()
-        for name, value in {"OUTPUT_RESOLUTION": "180x320", "FFMPEG_THREADS": "1",
-                            "LAYOUT": "crop", "MEME_SECONDS": 1.0}.items():
+        for name, value in {"OUTPUT_RESOLUTION": "180x320", "FFMPEG_THREADS": "1", "LAYOUT": "split",
+                            "MEME_SECONDS": 1.0, "MEME_CHANCE": 1.0, "GEMINI_API_KEY": "",
+                            "RCLONE_DEST": ""}.items():
             patcher = mock.patch.object(settings, name, value)
             patcher.start()
             self.addCleanup(patcher.stop)
 
-    def make_recording_buffer(self, piece_count):
+    def test_split_layout_cut(self):
         recording_dir = os.path.join(self.temp_dir, "rec", "twitch_test")
         os.makedirs(recording_dir)
         lines = []
-        for index in range(piece_count):
-            piece_name = f"seg_{index:06d}.ts"
+        for index in range(4):
             source = os.path.join(self.temp_dir, "piece.mp4")
             make_test_video(source, 2)
+            piece_name = f"seg_{index:06d}.ts"
             subprocess.run(["ffmpeg", "-loglevel", "error", "-y", "-i", source, "-c", "copy",
                             "-f", "mpegts", os.path.join(recording_dir, piece_name)], check=True)
             lines.append(f"{piece_name},{index * 2.0},{index * 2.0 + 2.0}")
         with open(os.path.join(recording_dir, "list.csv"), "w") as segment_list:
             segment_list.write("\n".join(lines) + "\n")
-        return recording_dir
-
-    def test_cut_burn_and_meme(self):
-        recording_dir = self.make_recording_buffer(piece_count=4)  # 8 s of stream
         recording_start_ts = time.time() - 8
-        raw_path = cut_raw_clip(recording_dir, recording_start_ts, spike_ts=recording_start_ts + 5,
-                                clip_name="twitch_test_1", before_s=3, after_s=2)
+        raw_path = cut_raw_clip(recording_dir, recording_start_ts, recording_start_ts + 5, "twitch_test_1",
+                                before_s=3, after_s=2, facecam_box=(0.7, 0.0, 0.3, 0.3))
         self.assertIsNotNone(raw_path)
         self.assertAlmostEqual(duration_s(raw_path), 5, delta=0.5)
+        self.assertEqual(video_size(raw_path), (180, 320))
+        self.assertIn('"codec_type": "audio"', probe(raw_path, "stream=codec_type"))
 
-        transcript = {"segments": [{"words": [{"word": " hello", "start": 0.2, "end": 0.6},
-                                              {"word": " chat", "start": 0.6, "end": 1.0}]}]}
-        os.makedirs(paths.READY_CLIPS_DIR, exist_ok=True)
-        final_path = os.path.join(paths.READY_CLIPS_DIR, "twitch_test_1.mp4")
-        self.assertTrue(burn_captions(raw_path, "WAIT FOR IT", final_path, caption_chunks(transcript), spike_at_s=3))
-        self.assertTrue(os.path.exists(final_path))
-
-        os.makedirs(paths.MEMES_DIR, exist_ok=True)
-        make_test_video(os.path.join(paths.MEMES_DIR, "shocked.mp4"), 2, size="200x200")
-        with_meme_path = final_path + ".meme.mp4"
-        self.assertTrue(insert_meme(final_path, "shocked.mp4", 3.4, with_meme_path))
-        self.assertAlmostEqual(duration_s(with_meme_path), 6, delta=0.6)
-
-    def test_process_clip_queues_finished_clip(self):
-        from clipwatcher.render import pipeline
-        raw_path = os.path.join(paths.RAW_CLIPS_DIR, "twitch_test_2.mp4")
+    def test_process_clip_full_edit(self):
         os.makedirs(paths.RAW_CLIPS_DIR, exist_ok=True)
-        make_test_video(raw_path, 4, size="180x320")
-        transcript = {"text": "no way he actually did that chat",
-                      "segments": [{"words": [{"word": " no", "start": 0.1, "end": 0.3},
-                                              {"word": " way", "start": 0.3, "end": 0.6}]}]}
+        raw_path = os.path.join(paths.RAW_CLIPS_DIR, "twitch_test_2.mp4")
+        make_test_video(raw_path, 24, size="180x320", loud_at_s=14.0)  # the "moment" is at 14 s
+        os.makedirs(paths.MEMES_DIR, exist_ok=True)
+        make_test_video(os.path.join(paths.MEMES_DIR, "shocked-npc.mp4"), 2, size="200x200")
+        os.makedirs(paths.MUSIC_DIR, exist_ok=True)
+        subprocess.run(["ffmpeg", "-loglevel", "error", "-y", "-f", "lavfi", "-i", "sine=frequency=220:duration=5",
+                        os.path.join(paths.MUSIC_DIR, "beat.mp3")], check=True)
+        transcript = {"text": "no way the npc did that",
+                      "segments": [{"words": [{"word": " no", "start": 0.5, "end": 0.8, "probability": 0.9},
+                                              {"word": " way", "start": 0.8, "end": 1.1, "probability": 0.9},
+                                              {"word": " npc", "start": 9.0, "end": 9.4, "probability": 0.9}]}]}
         job = pipeline.ClipJob(clip_name="twitch_test_2", raw_path=raw_path, source_url="https://twitch.tv/test",
-                               stream_info={"creator": "test", "game": ""}, length_s=4, spike_at_s=2, score=42)
-        with mock.patch.object(pipeline, "transcribe", return_value=transcript), \
-                mock.patch.object(settings, "GEMINI_API_KEY", ""), mock.patch.object(settings, "RCLONE_DEST", ""):
+                               stream_info={"creator": "kaicenat", "game": "Grand Theft Auto VI"},
+                               length_s=10, spike_at_s=18, score=42, seam_y=120)
+        with mock.patch.object(pipeline, "transcribe_window", return_value=transcript) as transcribe:
             queue_item = pipeline.process_clip(job)
-        self.assertEqual(queue_item["hook"], "NO WAY HE ACTUALLY DID THAT CHAT")
-        self.assertEqual(queue_item["final"], os.path.join("clips", "ready", "twitch_test_2.mp4"))
+
+        start_s, length_s = transcribe.call_args[0][2], transcribe.call_args[0][3]
+        self.assertAlmostEqual(start_s + length_s, 14.0 + 0.3 + settings.AFTER_PEAK_S, delta=0.5)  # ends after peak
+        self.assertAlmostEqual(length_s, 10, delta=0.1)
+        final_path = os.path.join(paths.READY_CLIPS_DIR, "twitch_test_2.mp4")
+        self.assertAlmostEqual(duration_s(final_path), 10 + settings.MEME_SECONDS, delta=0.6)  # + meme cutaway
+        self.assertAlmostEqual(integrated_loudness(final_path), settings.LOUDNESS_LUFS, delta=2.0)
+        self.assertIn("KAI CENAT", queue_item["hook"] + queue_item["title"].upper())
+        self.assertTrue(queue_item["title"])
+        self.assertFalse(os.path.exists(raw_path))
+        leftovers = [name for name in os.listdir(paths.READY_CLIPS_DIR) if ".edit." in name or ".meme." in name]
+        self.assertEqual(leftovers, [])
         self.assertTrue(os.path.exists(os.path.join(paths.QUEUE_DIR, "twitch_test_2.json")))
-        self.assertFalse(os.path.exists(raw_path))  # raw cut is deleted once the final clip exists
-        for extension in (".mp4", ".srt", ".txt"):
-            self.assertTrue(os.path.exists(os.path.join(paths.READY_CLIPS_DIR, "twitch_test_2" + extension)))
+
+    def test_builtin_sounds_generate(self):
+        for name in sound_design.BUILTIN_SOUNDS:
+            self.assertGreater(duration_s(sound_design.builtin_sound(name)), 0.3)
 
 
 if __name__ == "__main__":

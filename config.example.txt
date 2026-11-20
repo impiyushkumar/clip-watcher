@@ -4,31 +4,54 @@
 # After changing it on a server: sudo systemctl restart clip-watcher
 
 # ---- what to watch ----------------------------------------------------------------
-CHANNELS='kaicenat,ohnepixel,kick:n3on'   # [CHANNELS] twitch name, twitch:x, youtube:@handle, youtube:UC..., kick:x
+CHANNELS='xqc,kaicenat,kick:n3on'   # [CHANNELS] twitch name, twitch:x, youtube:@handle, youtube:UC..., kick:x
 QUALITY='best'               # [RECORD_QUALITY] streamlink quality: best, 1080p60, 720p60, 720p ...
 
 # ---- spike detection --------------------------------------------------------------
 MIN=10                       # [SPIKE_MIN_MESSAGES] min chat messages in a 10 s bucket
 FACTOR=2.5                   # [SPIKE_FACTOR] bucket must be this many times the 3-min median
 COOLDOWN=0                   # [CLIP_COOLDOWN_S] min seconds between clips per channel
-LENGTH=30                    # [CLIP_LENGTH_S] clip length (2/3 before the spike, 1/3 after)
-AUTO_LEARN=1                 # [AUTO_LEARN] 1 = learn best length/hours/hook from views
+LENGTH=15                    # [CLIP_LENGTH_S] final clip length (viral GTA 6 clips: 8-20 s)
+SEARCH_BEFORE=25             # [SEARCH_BEFORE_S] cut this much before the chat spike...
+SEARCH_AFTER=6               # [SEARCH_AFTER_S] ...and after; the real peak is found in the audio
+AFTER_PEAK=2.5               # [AFTER_PEAK_S] keep this much after the peak, then hard cut (loops)
+AUTO_LEARN=1                 # [AUTO_LEARN] 1 = learn best length/hours from views
 
-# ---- clip style -------------------------------------------------------------------
-MODEL=base                   # [WHISPER_MODEL] tiny (fast) / base / small (accurate)
-RES=1080x1920                # [OUTPUT_RESOLUTION] 720x1280 on small servers
-THREADS=0                    # [FFMPEG_THREADS] CPU threads per job, 0 = auto
-LAYOUT=crop                  # [LAYOUT] crop = fill screen, fit = whole frame + blurred background
-HOOK=1                       # [SHOW_HOOK] 0 = no hook text at the top
-ZOOM=1                       # [ZOOM_PUNCH] 0 = no zoom on the hype moment
-MEME_CHANCE=0.6              # [MEME_CHANCE] share of clips that cut to a meme from memes/
-MEME_SECONDS=2.2             # [MEME_SECONDS] meme length
-CW_FONT=Anton                # [FONT_NAME] font family in assets/fonts/
-GEMINI_API_KEY=''            # [GEMINI_API_KEY] optional: AI hooks + meme choice. Keep it secret.
+# ---- AI (strongly recommended: free key at https://aistudio.google.com/apikey) -----
+GEMINI_API_KEY=''            # [GEMINI_API_KEY] Gemini WATCHES each clip and writes the hook + title,
+                             # picks the sound/emoji/meme that fits, finds the facecam. Keep it secret.
 GEMINI_MODEL=gemini-flash-latest   # [GEMINI_MODEL]
 
+# ---- layout and picture -----------------------------------------------------------
+LAYOUT=split                 # [LAYOUT] split = facecam on top + gameplay below (viral layout)
+                             #          crop = fill screen, fit = whole frame + blur (avoid)
+FACECAMS=''                  # [FACECAMS] manual facecam boxes x,y,w,h as fractions of the frame,
+                             # e.g. 'xqc=0,0,0.19,0.25;n3on=none' (none = full-screen crop)
+FACECAM_SHARE=0.38           # [FACECAM_SHARE] share of the height the facecam gets
+RES=1080x1920                # [OUTPUT_RESOLUTION] 720x1280 on small servers
+THREADS=0                    # [FFMPEG_THREADS] CPU threads per job, 0 = auto
+COLOR_BOOST=1                # [COLOR_BOOST] punchier colours + sharpen
+ZOOM=1                       # [ZOOM_PUNCH] zoom punch-in on the peak
+SHAKE=1                      # [SHAKE] camera shake on the peak
+FLASH=1                      # [FLASH] white flash frame on the peak
+
+# ---- text ---------------------------------------------------------------------------
+HOOK=1                       # [SHOW_HOOK] 0 = no hook box
+CAPTION_WORDS=2              # [CAPTION_WORDS] words on screen at a time
+MODEL=small                  # [WHISPER_MODEL] tiny / base / small / medium (accuracy vs speed)
+WHISPER_VOCABULARY='GTA 6, GTA VI, Vice City, Leonida, Lucia, Jason, NPC, chat, bro'
+                             # [WHISPER_VOCABULARY] words Whisper should expect
+CW_FONT=Anton                # [FONT_NAME] font family in assets/fonts/
+
+# ---- sound (kit: assets/sound_kit/, yours: sounds/sfx/ + sounds/music/) -------------
+SFX_VOLUME=0.9               # [SFX_VOLUME] sound on the peak
+MUSIC_VOLUME=0.12            # [MUSIC_VOLUME] background music from sounds/music/, 0 = off
+LOUDNESS=-14                 # [LOUDNESS_LUFS] final loudness (Shorts/TikTok standard)
+MEME_CHANCE=0.4              # [MEME_CHANCE] share of clips that may cut to a meme from memes/
+MEME_SECONDS=1.8             # [MEME_SECONDS] meme length
+
 # ---- captions and posting ---------------------------------------------------------
-TAGS='#gaming #shorts'       # [HASHTAGS] your own hashtags
+TAGS='#gta6 #shorts'         # [HASHTAGS] your own hashtags (+ campaign tags)
 CTA='Follow for daily stream clips 🔥'   # [CALL_TO_ACTION] last caption line
 UPLOAD='none'                # [UPLOAD_TARGETS] any of youtube,instagram,facebook, or none
 PRIVACY=public               # [PRIVACY] YouTube: public / unlisted / private
