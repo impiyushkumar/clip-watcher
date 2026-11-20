@@ -247,8 +247,10 @@ def write_copy(transcript, stream_info, video_path=None, start_s=0.0, length_s=N
     if not 2 <= len(hook.split()) <= 14:
         return fallback
     emphasis = on_screen_text(str(reply.get("emphasis", "")))
+    from clipwatcher.render.memes import meme_key_color
     beats = validate_beats(reply.get("beats"), length_s, sound_menu, emoji_names, meme_menu,
-                           timed_words=timed_word_list(transcript), chat_messages=chat_messages)
+                           timed_words=timed_word_list(transcript), chat_messages=chat_messages,
+                           overlay_memes={name for name in meme_menu if meme_key_color(name)})
     beats = [beat for beat in beats if not (beat.is_cutaway and beat.at_s < MIN_CUTAWAY_GAP_S - 0.2)]
     return ClipCopy(
         hook=hook,

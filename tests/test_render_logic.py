@@ -204,3 +204,22 @@ class CaptionFixTest(unittest.TestCase):
                                               {"word": " bro", "start": 13.8, "end": 14.0}]}]}
         apply_caption_fixes(transcript, [("know charge", "no charge"), ("x y", "only-one")])
         self.assertEqual(caption_chunks(transcript, max_words=2), [(13.2, 13.7, "NO CHARGE"), (13.8, 14.0, "BRO")])
+
+
+class CaptionPauseTest(unittest.TestCase):
+    def test_pause_splits_caption(self):
+        from clipwatcher.render.subtitles import caption_chunks
+        transcript = {"segments": [{"words": [{"word": " the", "start": 1.9, "end": 2.0},
+                                              {"word": " dumbass", "start": 12.1, "end": 12.6}]}]}
+        self.assertEqual(caption_chunks(transcript, max_words=2), [(1.9, 2.0, "THE"), (12.1, 12.6, "DUMBASS")])
+
+
+class OverlayMemeSpacingTest(unittest.TestCase):
+    def test_keyed_meme_is_not_a_cutaway(self):
+        from clipwatcher.render.beats import validate_beats
+        evidence = {"reason": "r", "visual": "v"}
+        raw = [{"at": 12.9, "kind": "text_card", "value": "nice", **evidence},
+               {"at": 14.0, "kind": "meme", "value": "keyed.mp4", **evidence},
+               {"at": 14.1, "kind": "meme", "value": "plain.mp4", **evidence}]
+        beats = validate_beats(raw, 15.0, {}, [], {"keyed.mp4": "", "plain.mp4": ""}, overlay_memes={"keyed.mp4"})
+        self.assertEqual([beat.value for beat in beats], ["nice", "keyed.mp4"])
