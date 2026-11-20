@@ -14,6 +14,7 @@ import textwrap
 from clipwatcher import settings
 
 CHUNK_BREAK_CHARS = ".?!,"
+MAX_PAUSE_IN_CHUNK_S = 0.6        # a longer pause between words starts a new caption
 MIN_WORD_PROBABILITY = 0.35        # Whisper's confidence; below this the word is usually wrong
 # ASS colours are &HAABBGGRR
 WHITE, BLACK, YELLOW, RED = "&H00FFFFFF", "&H00000000", "&H0000E5FF", "&H002020E8"
@@ -44,6 +45,9 @@ def group_words(transcript, max_words, max_chars):
     breaking after punctuation."""
     groups, current = [], []
     for word in confident_words(transcript):
+        if current and word["start"] - current[-1]["end"] > MAX_PAUSE_IN_CHUNK_S:
+            groups.append(current)  # a pause ends the caption: never hold words across silence
+            current = []
         current.append(word)
         text = "".join(item["word"] for item in current).strip()
         if len(current) >= max_words or len(text) >= max_chars or text[-1:] in CHUNK_BREAK_CHARS:

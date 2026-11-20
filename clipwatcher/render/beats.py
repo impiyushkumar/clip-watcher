@@ -88,17 +88,19 @@ class Beat:
     quote: str = ""          # spoken words it reacts to
     chat: str = ""           # chat message it reacts to
     visual: str = ""         # on-screen action it reacts to
+    is_overlay: bool = False  # a keyed (green-screen) meme: laid over the clip, not a cutaway
 
     @property
     def is_cutaway(self):
-        return self.kind in CUTAWAY_KINDS
+        return self.kind in CUTAWAY_KINDS and not self.is_overlay
 
 
-def validate_beats(raw_beats, length_s, sound_menu, emoji_names, meme_names, timed_words=(), chat_messages=()):
+def validate_beats(raw_beats, length_s, sound_menu, emoji_names, meme_names, timed_words=(), chat_messages=(),
+                   overlay_memes=()):
     """Turn Gemini's list of dicts into safe Beats: known kinds, values that exist in the
     menus, times inside the clip, real evidence (see module docstring), sane durations,
     per-kind limits, no cutaway pile-ups. timed_words: [(start_s, word)];
-    chat_messages: [(seconds into the clip, text)]."""
+    chat_messages: [(seconds into the clip, text)]; overlay_memes: keyed memes (not cutaways)."""
     allowed_values = {"sound": set(sound_menu), "emoji": set(emoji_names),
                       "meme": set(meme_names), "sticker": set(meme_names)}
     beats = []
@@ -127,7 +129,8 @@ def validate_beats(raw_beats, length_s, sound_menu, emoji_names, meme_names, tim
                     reason=str(raw.get("reason", "") or "").strip()[:200],
                     quote=str(raw.get("quote", "") or "").strip()[:120],
                     chat=str(raw.get("chat", "") or "").strip()[:120],
-                    visual=str(raw.get("visual", "") or "").strip()[:160])
+                    visual=str(raw.get("visual", "") or "").strip()[:160],
+                    is_overlay=kind == "meme" and value in overlay_memes)
         if has_evidence(beat, timed_words, chat_messages):
             beats.append(beat)
     return enforce_limits(sorted(beats, key=lambda beat: beat.at_s))
