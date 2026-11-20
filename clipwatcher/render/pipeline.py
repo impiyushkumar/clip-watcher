@@ -167,6 +167,14 @@ def process_clip(job):
     # 1. picture: trim + effects at every zoom beat + emoji/sticker overlays + text
     overlays = []
     for beat in beats:
+        key_color = memes.meme_key_color(beat.value) if beat.kind in ("meme", "sticker") and meme_path(beat.value) else None
+        if key_color:
+            # green-screen / black-background meme: keyed out over the gameplay (with its sound), not a cutaway
+            duration_s = min(beat.duration_s or settings.MEME_SECONDS,
+                             sound_design.media_duration_s(meme_path(beat.value)))
+            overlays.append(("keyed", meme_path(beat.value), beat.at_s, duration_s, key_color))
+            beat.kind = "keyed"
+            continue
         overlay_file = emoji_path(beat.value) if beat.kind == "emoji" else (
             meme_path(beat.value) if beat.kind == "sticker" else None)
         if overlay_file:
@@ -184,8 +192,8 @@ def process_clip(job):
     # 2. sound beats (+ sticker audio), on the clip's own timeline
     sound_events = [(sound_design.resolve_sound(beat.value, transcript_text), beat.at_s, settings.SFX_VOLUME)
                     for beat in beats if beat.kind == "sound"]
-    sound_events += [(file_path, at_s, 0.8) for kind, file_path, at_s, _duration in overlays
-                     if kind == "sticker" and sound_design.has_audio(file_path)]
+    sound_events += [(overlay[1], overlay[2], 0.9, overlay[3]) for overlay in overlays
+                     if overlay[0] in ("sticker", "keyed") and sound_design.has_audio(overlay[1])]
     with_sounds_path = f"{work_prefix}.sfx.mp4"
     temporary_files.append(with_sounds_path)
     if sound_events and sound_design.mix_audio(current_path, with_sounds_path, sound_events, normalize=False):

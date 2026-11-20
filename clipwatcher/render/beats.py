@@ -17,8 +17,8 @@ from dataclasses import dataclass
 
 KINDS = ("sound", "emoji", "zoom", "text_card", "meme", "sticker")
 CUTAWAY_KINDS = ("text_card", "meme")
-MAX_PER_KIND = {"sound": 6, "emoji": 4, "zoom": 4, "text_card": 3, "meme": 3, "sticker": 2}
-MAX_BEATS = 12
+MAX_PER_KIND = {"sound": 8, "emoji": 4, "zoom": 4, "text_card": 3, "meme": 5, "sticker": 2}
+MAX_BEATS = 16
 MIN_CUTAWAY_GAP_S = 1.2      # cutaways closer than this feel like a glitch
 MIN_SAME_KIND_GAP_S = 0.6
 DEFAULT_DURATIONS_S = {"text_card": 0.9, "meme": 1.8, "sticker": 2.0, "emoji": 1.6}

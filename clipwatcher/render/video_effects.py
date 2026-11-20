@@ -57,8 +57,21 @@ def effects_filter(zoom_times_s, width, height):
     return filters
 
 
+KEY_SIMILARITY = {"black": "0.12:0.06", "color": "0.22:0.08"}   # chromakey similarity:blend
+
+
+def key_filter(key_color):
+    """ffmpeg filter that removes a flat background colour (green screen or black)."""
+    similarity = KEY_SIMILARITY["black"] if key_color == "0x000000" or int(key_color, 16) < 0x202020 \
+        else KEY_SIMILARITY["color"]
+    return f"chromakey={key_color}:{similarity}"
+
+
 def overlay_box(kind, index, width, height, seam_y):
-    """(size, x, y) for the index-th emoji or sticker; alternates sides so they don't stack."""
+    """(size, x, y) for the index-th overlay; emojis alternate sides so they don't stack.
+    "keyed" = a green-screen meme over the gameplay: full width, standing on the bottom edge."""
+    if kind == "keyed":
+        return width, 0, None
     if kind == "sticker":
         size = even(width * STICKER_SIZE_SHARE)
         x = (width - size) // 2
@@ -74,7 +87,7 @@ def overlay_box(kind, index, width, height, seam_y):
 def edit_video(raw_path, output_path, start_s, length_s, chunks, hook, emphasis="", seam_y=None,
                peak_s=None, zoom_times_s=(), overlays=(), credit=""):
     """Trim [start_s, start_s + length_s] of raw_path and apply effects, overlays and text.
-    overlays: [(kind "emoji"|"sticker", file path, at_s, duration_s)]. All times are relative
+    overlays: [(kind "emoji"|"sticker"|"keyed", file path, at_s, duration_s[, key_color])]. All times are relative
     to the trimmed clip. Returns success."""
     output_dir = os.path.dirname(os.path.abspath(output_path))
     ass_path = os.path.join(output_dir, ".style.ass")
@@ -85,17 +98,21 @@ def edit_video(raw_path, output_path, start_s, length_s, chunks, hook, emphasis=
     subtitles = f"subtitles=.style.ass:fontsdir='{paths.FONTS_DIR}'"
     inputs = ["-ss", f"{start_s:.2f}", "-t", f"{length_s:.2f}", "-i", os.path.abspath(raw_path)]
     graph = [f"[0:v]{','.join(effects_filter(list(zoom_times_s), width, height) or ['null'])}[layer0]"]
-    counts = {"emoji": 0, "sticker": 0}
-    for input_index, (kind, file_path, at_s, duration_s) in enumerate(overlays, start=1):
+    counts = {"emoji": 0, "sticker": 0, "keyed": 0}
+    for input_index, overlay in enumerate(overlays, start=1):
+        kind, file_path, at_s, duration_s = overlay[:4]
+        key_color = overlay[4] if len(overlay) > 4 else None
         size, x, y = overlay_box(kind, counts[kind], width, height, seam_y)
         counts[kind] += 1
         decoder = ["-c:v", "libvpx-vp9"] if file_path.endswith(".webm") else []  # keeps emoji transparency
         inputs += ["-stream_loop", "-1", *decoder, "-i", os.path.abspath(file_path)]
+        prepare = f"format=yuva420p,{key_filter(key_color)}," if kind == "keyed" and key_color else ""
         border = ",pad=iw+12:ih+12:6:6:white" if kind == "sticker" else ""
-        graph.append(f"[{input_index}:v]scale={size}:-2,format=yuva420p{border},"
+        graph.append(f"[{input_index}:v]{prepare}scale={size}:-2,format=yuva420p{border},"
                      f"setpts=PTS-STARTPTS+{at_s:.2f}/TB[overlay{input_index}]")
         until_s = min(length_s, at_s + duration_s)
-        graph.append(f"[layer{input_index - 1}][overlay{input_index}]overlay={x}:{y}:eof_action=pass:"
+        position_y = y if y is not None else "main_h-overlay_h"
+        graph.append(f"[layer{input_index - 1}][overlay{input_index}]overlay={x}:{position_y}:eof_action=pass:"
                      f"enable='between(t,{at_s:.2f},{until_s:.2f})'[layer{input_index}]")
     graph.append(f"[layer{len(overlays)}]{subtitles}[video]")
     command = ["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", *inputs,

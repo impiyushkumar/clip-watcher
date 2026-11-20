@@ -1,5 +1,7 @@
 """The meme library in memes/: short reaction videos the beat sheet can cut to (full-screen,
-letterboxed, with their own audio) or show as a picture-in-picture sticker.
+letterboxed, with their own audio) or show as a picture-in-picture sticker. Memes on a flat
+background (green screen, or black like GTA "wasted") are detected automatically, keyed out
+and laid over the gameplay instead.
 
 memes/catalog.json says what each meme is and WHEN to use it; Gemini reads it when it plans
 the beats. Add memes with the importer, which trims, normalizes and describes them:
@@ -22,6 +24,7 @@ from clipwatcher.log import log
 
 MEME_EXTENSIONS = (".mp4", ".mov", ".webm", ".mkv", ".gif")
 MAX_MEME_S = 4.0
+KEY_MOMENT_MAX_S = 3.0      # auto-trim keeps at most this much around the key sound
 CATALOG_NAME = "catalog.json"
 
 
@@ -56,6 +59,45 @@ def meme_menu():
     return {name: (catalog.get(name) or {}).get("use_when")
             or os.path.splitext(name)[0].replace("-", " ").replace("_", " ")
             for name in list_memes()}
+
+
+KEYABLE_BORDER_SHARE = 0.6   # this much of the frame border one flat colour = a keyable background
+
+
+def frame_pixels(file_path, at_s=0.5, size=32):
+    raw = subprocess.run(["ffmpeg", "-hide_banner", "-loglevel", "error", "-ss", str(at_s), "-i", file_path,
+                          "-frames:v", "1", "-vf", f"scale={size}:{size}", "-f", "rawvideo", "-pix_fmt", "rgb24", "-"],
+                         capture_output=True).stdout
+    return [tuple(raw[index:index + 3]) for index in range(0, len(raw) - 2, 3)], size
+
+
+def background_key_color(file_path):
+    """The flat background colour to key out ("0x8cff2e" for a lime green screen, "0x000000"
+    for a black overlay like GTA "wasted"), or None for a normal video. Looks at the frame
+    border: green-screen and black-overlay memes have one flat colour there."""
+    pixels, size = frame_pixels(file_path)
+    if len(pixels) < size * size:
+        return None
+    border = [pixels[row * size + column] for row in range(size) for column in range(size)
+              if row in (0, 1, size - 2, size - 1) or column in (0, 1, size - 2, size - 1)]
+    green = [pixel for pixel in border if pixel[1] > 110 and pixel[1] > pixel[0] + 40 and pixel[1] > pixel[2] + 40]
+    black = [pixel for pixel in border if max(pixel) < 30]
+    for candidates in (green, black):
+        if len(candidates) / len(border) >= KEYABLE_BORDER_SHARE:
+            red, green_value, blue = (sum(channel) // len(candidates) for channel in zip(*candidates))
+            return f"0x{red:02x}{green_value:02x}{blue:02x}"
+    return None
+
+
+def meme_key_color(name):
+    """Background colour to key out for a meme (cached in memes/catalog.json), or None."""
+    catalog = load_catalog()
+    entry = catalog.setdefault(name, {})
+    if "key_color" not in entry:
+        file_path = meme_path(name)
+        entry["key_color"] = background_key_color(file_path) if file_path else None
+        save_catalog(catalog)
+    return entry["key_color"]
 
 
 def meme_path(name):
@@ -98,10 +140,16 @@ def describe_meme(meme_file):
 
 
 def add_meme(source, name=None, start_s=None, end_s=None, use_when=None):
-    """Import one meme into memes/. Returns its file name."""
+    """Import one meme into memes/. Without start/end it auto-trims to the key moment (the
+    loudest sound event, max KEY_MOMENT_MAX_S). Returns its file name."""
     os.makedirs(paths.MEMES_DIR, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix="clipwatcher-meme-") as work_dir:
         source_path = fetch_source(source, work_dir)
+        if start_s is None and end_s is None:  # keep only the key moment ("noice", the laugh, the scream)
+            from clipwatcher.render.moment_finder import find_key_moment, loudness_envelope
+            key_moment = find_key_moment(loudness_envelope(source_path), max_length_s=KEY_MOMENT_MAX_S)
+            if key_moment:
+                start_s, end_s = key_moment
         trim = []
         if start_s is not None:
             trim += ["-ss", str(start_s)]
@@ -118,7 +166,8 @@ def add_meme(source, name=None, start_s=None, end_s=None, use_when=None):
         shutil.move(normalized, os.path.join(paths.MEMES_DIR, file_name))
     catalog = load_catalog()
     catalog[file_name] = {"use_when": use_when or (description or {}).get("use_when")
-                          or file_name[:-4].replace("-", " "), "source": source}
+                          or file_name[:-4].replace("-", " "), "source": source,
+                          "key_color": background_key_color(os.path.join(paths.MEMES_DIR, file_name))}
     save_catalog(catalog)
     log(f"meme added: {file_name}: {catalog[file_name]['use_when']}")
     return file_name

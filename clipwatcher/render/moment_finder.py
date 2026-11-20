@@ -73,3 +73,38 @@ def choose_window(duration_s, peak_s, length_s, after_peak_s):
     start_s = max(0.0, end_s - length_s)
     end_s = min(duration_s, start_s + length_s)
     return round(start_s, 2), round(end_s, 2)
+
+
+def find_key_moment(envelope, max_length_s=3.0, min_length_s=0.8, drop_db=18.0, quiet_gap_s=0.3,
+                    lead_in_s=0.15):
+    """(start_s, end_s) of the main sound event in a meme clip: the loudest moment, extended
+    left and right while the sound stays within drop_db of it (a quiet gap of quiet_gap_s ends
+    it). E.g. just the "noice" out of a 7 s clip. None if there is no audio."""
+    smoothed = smooth(envelope)
+    if not smoothed:
+        return None
+    peak_db, peak_index = max((db, index) for index, (_time_s, db) in enumerate(smoothed))
+    threshold_db = peak_db - drop_db
+    gap_steps = max(1, int(quiet_gap_s / STEP_S))
+
+    def edge(direction):
+        index, quiet_run, last_loud = peak_index, 0, peak_index
+        while 0 <= index + direction < len(smoothed):
+            index += direction
+            if smoothed[index][1] >= threshold_db:
+                quiet_run, last_loud = 0, index
+            else:
+                quiet_run += 1
+                if quiet_run >= gap_steps:
+                    break
+        return last_loud
+
+    start_s = max(0.0, smoothed[edge(-1)][0] - lead_in_s)
+    end_s = smoothed[edge(+1)][0] + STEP_S * 2
+    peak_s = smoothed[peak_index][0]
+    if end_s - start_s > max_length_s:  # long event: keep the part around the peak
+        start_s = max(start_s, peak_s - max_length_s * 0.35)
+        end_s = start_s + max_length_s
+    if end_s - start_s < min_length_s:
+        end_s = start_s + min_length_s
+    return round(start_s, 2), round(end_s, 2)
