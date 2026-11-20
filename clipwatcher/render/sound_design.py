@@ -8,6 +8,7 @@ Where sounds come from (Gemini sees ALL of them as one menu and picks what fits)
     sounds/music/                           background tracks; one random track per clip
 Without the kit a deep boom and a whoosh are generated into clips/.builtin_sounds/.
 """
+import functools
 import json
 import os
 import random
@@ -25,6 +26,7 @@ BUILTIN_SOUNDS = {  # file name -> ffmpeg lavfi source
                   "afade=t=in:d=0.25,afade=t=out:st=0.25:d=0.2",
 }
 WHOOSH_LEAD_S = 0.2   # the whoosh starts a little before the cut it leads into
+MAX_PEAK_LEAD_S = 1.5  # never start a sound more than this before its beat
 
 
 def list_audio(folder):
@@ -198,3 +200,15 @@ def correct_loudness(media_path, tolerance_db=1.0):
         os.replace(corrected_path, media_path)
     elif os.path.exists(corrected_path):
         os.remove(corrected_path)
+
+
+@functools.lru_cache(maxsize=4096)
+def sound_peak_offset_s(sound_path):
+    """Seconds from the start of a sound to its loudest point (a "fahhh" or a riser builds up
+    before it hits). Sounds start this much early so the hit lands exactly on the beat."""
+    from clipwatcher.render.moment_finder import find_peak_s, loudness_envelope
+    try:
+        peak_s = find_peak_s(loudness_envelope(sound_path))
+    except Exception:
+        return 0.0
+    return min(MAX_PEAK_LEAD_S, peak_s or 0.0)

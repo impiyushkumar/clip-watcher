@@ -194,3 +194,13 @@ class TranscriptWindowTest(unittest.TestCase):
         self.assertEqual([(word["word"].strip(), word["start"]) for word in result["segments"][0]["words"]],
                          [("radio", 1.0), ("tower", 1.4)])
         self.assertEqual(result["text"], "radio tower")
+
+
+class CaptionFixTest(unittest.TestCase):
+    def test_misheard_words_are_replaced_keeping_times(self):
+        from clipwatcher.render.subtitles import apply_caption_fixes, caption_chunks
+        transcript = {"segments": [{"words": [{"word": " know", "start": 13.2, "end": 13.4},
+                                              {"word": " charge,", "start": 13.4, "end": 13.7},
+                                              {"word": " bro", "start": 13.8, "end": 14.0}]}]}
+        apply_caption_fixes(transcript, [("know charge", "no charge"), ("x y", "only-one")])
+        self.assertEqual(caption_chunks(transcript, max_words=2), [(13.2, 13.7, "NO CHARGE"), (13.8, 14.0, "BRO")])
