@@ -59,6 +59,16 @@ pack in `packs/reaction-memes.txt`) fill the private library: `import-sounds`, `
 | 12 | "SOURCE: TWITCH.TV/XQC" credit on screen (campaigns require it, and it builds trust) | `pipeline.source_credit` |
 | 13 | Colour boost + sharpen (stream rips look flat on phones) | `COLOR_BOOST` |
 
+## Timing rules from practitioner research (Nov 2026)
+Mostly editor and vendor guides, not controlled studies, so treat them as strong defaults:
+- **The first 2–3 s decide "viewed vs. swiped away"**, the main signal YouTube exposes for Shorts. → a justified beat early, plus an opening punch-in when nothing happens before 1.5 s (`pipeline.complete_beats`).
+- **Something changes every 1.5–3 s** (cut, zoom, caption pop, sound, insert). → prompt pacing rule.
+- **One sound per joke, with the sound's *peak* on the frame that carries the joke.** → `sound_design.sound_peak_offset_s` starts each sound early by its build-up.
+- **It must work muted:** captions, the hook box and text cards carry the joke without sound.
+- **Loop the ending** back into the start (hard cut ~2.5 s after the peak).
+
+Sources: [YouTube Shorts editing guide](https://videoeditingtips.pro/youtube-video-editing-guide/youtube-shorts-editing-guide/), [funny SFX timing](https://dubbingai.io/articles/en/collection/funny-sfx-sound-effects-video-editing), [vidIQ: Shorts algorithm 2026](https://vidiq.com/blog/post/youtube-shorts-algorithm/), [Shorts algorithm in YouTube's words](https://outlierkit.com/resources/youtube-shorts-algorithm/), [editing effects for Shorts](https://clipcreator.ai/blog/video-editing-effects).
+
 ## Distribution
 
 **Timing matters more than polish during a launch window.** GTA 6 just released: every big
