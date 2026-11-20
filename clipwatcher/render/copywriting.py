@@ -63,6 +63,7 @@ class ClipCopy:
     beats: list = None          # [Beat] planned by Gemini; None = use the single-peak fallback
     emoji: str = ""             # fallback only: emoji for the peak
     summary: str = ""           # Gemini's understanding of what happens in the clip
+    caption_fixes: list = None  # [(wrong, right)] transcript words Gemini heard differently
     rejected_beats: int = 0     # beats dropped for missing / false evidence
 
 
@@ -133,6 +134,17 @@ def fallback_copy(stream_info, transcript_text="", emoji_names=()):
                     comment=random.choice(FALLBACK_COMMENTS))
 
 
+def valid_caption_fixes(raw_fixes, max_fixes=12):
+    """[(wrong, right)] from Gemini's caption_fixes; short phrases only."""
+    fixes = []
+    for fix in raw_fixes if isinstance(raw_fixes, list) else []:
+        if isinstance(fix, dict):
+            wrong, right = str(fix.get("wrong", "")).strip(), str(fix.get("right", "")).strip()
+            if wrong and right and wrong.lower() != right.lower() and len(wrong) <= 40 and len(right) <= 40:
+                fixes.append((wrong, right))
+    return fixes[:max_fixes]
+
+
 def clip_proxy_mp4(video_path, start_s, length_s):
     """A small copy of the clip window WITH audio (360 px, low bitrate) for Gemini to watch
     and listen to. Timestamps in it are seconds into the clip. None if it can't be made."""
@@ -181,7 +193,9 @@ def build_prompt(timed_words, stream_info, sound_menu, emoji_names, meme_menu, l
         f"4. title: max 70 chars, Gen-Z clip-page tone, names {creator} and {game}, 1-2 emojis at the end "
         f"(😭 💀 😳 🔥 ✌️), e.g. \"{creator} got PRESSED by a random NPC in {game} 😭\".\n"
         "5. comment: a short first comment that makes viewers reply (question or hot take), 1 emoji.\n"
-        "6. beats: edit beats across the clip. Each beat: {\"at\": seconds, \"kind\": ..., \"value\": ..., "
+        "6. caption_fixes: words the auto transcript got WRONG that you can clearly hear in the audio, as "
+        "[{\"wrong\": \"know charge\", \"right\": \"no charge\"}] (empty list if it's fine).\n"
+        "7. beats: edit beats across the clip. Each beat: {\"at\": seconds, \"kind\": ..., \"value\": ..., "
         "\"duration\": seconds (cutaways/emoji/sticker), \"sound\": optional category for a text_card, "
         "\"reason\": why THIS meme/sound fits THIS moment, and the EVIDENCE: \"quote\": the exact words "
         "spoken at that time (copy them from the transcript), and/or \"chat\": a chat message reacting to it "
@@ -197,13 +211,16 @@ def build_prompt(timed_words, stream_info, sound_menu, emoji_names, meme_menu, l
         "   sticker: small picture-in-picture meme over the clip (~2 s), value = file from the meme menu\n"
         "Rules: a meme/sound must MATCH the meaning of the moment (its 'use when' fits what is said or "
         "happens) - if nothing in the menu truly fits, skip it; never place one just to fill time. Always a "
-        "sound + zoom on the peak. No two cutaways within 1.2 s; no cutaways before 1.0 s. Aim for a beat every "
-        "1-2 s only where the clip gives you a reason.\n"
+        "sound + zoom on the peak. No two cutaways within 1.2 s; no cutaways before 1.0 s. The first 2 seconds decide "
+        "whether people swipe away: put a strong, justified beat in them. Keep the pace: no stretch longer than ~3 s "
+        "without a beat, as long as the clip gives you a reason. One sound per joke. Many people watch MUTED, so "
+        "text cards and emojis must make the joke readable without sound.\n"
         "Sound menu (category: use when):\n" + sounds + "\n"
         "Meme menu (file: use when):\n" + memes + "\n"
         "Only describe what the video, transcript and chat support: no made-up events, no slurs, no claims "
         "about real people beyond the clip.\n"
         'Reply as JSON: {"summary": "...", "hook": "...", "emphasis": "...", "title": "...", "comment": "...", '
+        '"caption_fixes": [{"wrong": "...", "right": "..."}], '
         '"beats": [{"at": 2.4, "kind": "sound", "value": "impact/punch", "reason": "...", "quote": "...", '
         '"chat": "", "visual": "..."}, ...]}')
 
@@ -240,6 +257,7 @@ def write_copy(transcript, stream_info, video_path=None, start_s=0.0, length_s=N
         comment=str(reply.get("comment", "")).strip()[:300] or fallback.comment,
         beats=beats or None, emoji=fallback.emoji,
         summary=str(reply.get("summary", "")).strip()[:400],
+        caption_fixes=valid_caption_fixes(reply.get("caption_fixes")),
         rejected_beats=max(0, len(reply.get("beats") or []) - len(beats)))
 
 

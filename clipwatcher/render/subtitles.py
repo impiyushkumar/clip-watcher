@@ -54,6 +54,26 @@ def group_words(transcript, max_words, max_chars):
     return groups
 
 
+def apply_caption_fixes(transcript, fixes):
+    """Replace misheard words (Gemini heard the audio) in the word-timed transcript, keeping
+    the timings: "know charge" -> "no charge". Multi-word fixes need the same word count."""
+    if not fixes:
+        return transcript
+    words = [word for segment in transcript.get("segments", []) for word in segment.get("words", [])]
+    lowered = [re.sub(r"[^a-z0-9']", "", word["word"].lower()) for word in words]
+    for wrong, right in fixes:
+        wrong_words = [re.sub(r"[^a-z0-9']", "", part) for part in wrong.lower().split()]
+        right_words = right.split()
+        if len(wrong_words) != len(right_words):
+            continue
+        for index in range(len(words) - len(wrong_words) + 1):
+            if lowered[index:index + len(wrong_words)] == wrong_words:
+                for offset, replacement in enumerate(right_words):
+                    words[index + offset]["word"] = " " + replacement
+                    lowered[index + offset] = re.sub(r"[^a-z0-9']", "", replacement.lower())
+    return transcript
+
+
 def caption_chunks(transcript, max_words=None, max_chars=14):
     """Chunks for the burned-in captions: [(start_s, end_s, "UPPER TEXT")]."""
     max_words = max_words or settings.CAPTION_WORDS

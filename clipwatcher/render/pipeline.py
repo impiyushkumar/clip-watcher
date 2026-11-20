@@ -40,7 +40,7 @@ from clipwatcher.render.beats import Beat, fallback_beats
 from clipwatcher.render.copywriting import describe, write_copy
 from clipwatcher.render.emojis import emoji_path, list_emojis
 from clipwatcher.render.memes import meme_path
-from clipwatcher.render.subtitles import caption_chunks, write_srt
+from clipwatcher.render.subtitles import apply_caption_fixes, caption_chunks, write_srt
 from clipwatcher.render.text_cards import make_text_card
 from clipwatcher.render.transcriber import transcribe_window
 from clipwatcher.render.video_effects import edit_video, insert_cutaway
@@ -48,6 +48,7 @@ from clipwatcher.render.video_effects import edit_video, insert_cutaway
 MEME_DELAY_AFTER_PEAK_S = 0.6
 PEAK_SYNC_TOLERANCE_S = 0.6        # a beat this close to the peak counts as "on the peak"
 CHAT_LAG_S = 8                     # chat reacts a few seconds after the moment
+OPENING_HOOK_S = 1.5               # something must happen before this
 FALLBACK_PEAK_BEFORE_SPIKE_S = 3   # no audio: assume the moment was 3 s before chat reacted
 
 
@@ -119,6 +120,9 @@ def complete_beats(copy, timing):
     if not any(beat.kind == "sound" for beat in near_peak):
         beats.append(Beat(at_s=timing.onset_s, kind="sound", reason="loudest moment of the clip",
                           visual="peak"))  # "" -> keyword pick / boom
+    if not any(beat.at_s <= OPENING_HOOK_S for beat in beats):
+        # the first ~2 s decide "viewed vs swiped away": never open on nothing
+        beats.append(Beat(at_s=0.05, kind="zoom", reason="opening punch-in (first seconds decide swipe-away)"))
     return sorted(beats, key=lambda beat: beat.at_s)
 
 
@@ -164,11 +168,12 @@ def process_clip(job):
     vocabulary = ", ".join(filter(None, [creator_display_name(job.stream_info), settings.WHISPER_VOCABULARY]))
     transcript = transcribe_window(job.raw_path, job.whisper_model, timing.start_s, timing.length_s, vocabulary)
     transcript_text = (transcript.get("text") or "").strip()
-    write_srt(transcript, os.path.join(paths.READY_CLIPS_DIR, job.clip_name + ".srt"))
     copy = write_copy(transcript, job.stream_info, video_path=job.raw_path, start_s=timing.start_s,
                       length_s=timing.length_s, peak_s=timing.peak_s, sound_menu=sound_design.load_sound_menu(),
                       emoji_names=list_emojis(), meme_menu=memes.meme_menu(),
                       chat_messages=clip_chat(job.chat_messages, timing))
+    apply_caption_fixes(transcript, copy.caption_fixes)
+    write_srt(transcript, os.path.join(paths.READY_CLIPS_DIR, job.clip_name + ".srt"))
     beats = complete_beats(copy, timing)
     write_edit_report(job.clip_name, copy, beats)
     log(f"{job.clip_name}: {describe(copy)}")
@@ -206,8 +211,13 @@ def process_clip(job):
         return None
 
     # 2. sound beats (+ sticker audio), on the clip's own timeline
-    sound_events = [(sound_design.resolve_sound(beat.value, transcript_text), beat.at_s, settings.SFX_VOLUME)
-                    for beat in beats if beat.kind == "sound"]
+    sound_events = []
+    for beat in beats:
+        if beat.kind == "sound":
+            sound_path = sound_design.resolve_sound(beat.value, transcript_text)
+            # the sound's loudest point lands on the beat, not its first (often quiet) moment
+            hit_s = max(0.0, beat.at_s - sound_design.sound_peak_offset_s(sound_path))
+            sound_events.append((sound_path, hit_s, settings.SFX_VOLUME))
     sound_events += [(overlay[1], overlay[2], 0.9, overlay[3]) for overlay in overlays
                      if overlay[0] in ("sticker", "keyed") and sound_design.has_audio(overlay[1])]
     with_sounds_path = f"{work_prefix}.sfx.mp4"
