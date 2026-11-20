@@ -26,10 +26,10 @@ from dataclasses import dataclass
 
 KINDS = ("sound", "emoji", "zoom", "text_card", "meme", "sticker")
 CUTAWAY_KINDS = ("text_card", "meme")
-MAX_PER_KIND = {"sound": 6, "emoji": 3, "zoom": 4, "text_card": 2, "meme": 3, "sticker": 1}
-MAX_MEMES = 3                 # memes + stickers per clip: a few perfect ones, not a pile
-MIN_MEME_GAP_S = 3.0          # each meme gets room to land before the next one
-MAX_BEATS = 16
+# No creative limits: Gemini decides how many memes/sounds a clip needs (1 or 10).
+# These are only safety caps against a broken reply.
+MAX_PER_KIND = {"sound": 30, "emoji": 15, "zoom": 15, "text_card": 10, "meme": 15, "sticker": 10}
+MAX_BEATS = 60
 MIN_CUTAWAY_GAP_S = 1.2      # cutaways closer than this feel like a glitch
 MIN_SAME_KIND_GAP_S = 0.6
 DEFAULT_DURATIONS_S = {"text_card": 1.2, "meme": 0.0, "sticker": 0.0, "emoji": 1.6}   # memes: full length
@@ -139,13 +139,9 @@ def validate_beats(raw_beats, length_s, sound_menu, emoji_names, meme_names, tim
 
 
 def enforce_limits(beats):
-    kept, counts, last_at_by_kind, last_cutaway_at, last_meme_at = [], {}, {}, None, None
+    kept, counts, last_at_by_kind, last_cutaway_at = [], {}, {}, None
     for beat in beats:
         if counts.get(beat.kind, 0) >= MAX_PER_KIND[beat.kind] or len(kept) >= MAX_BEATS:
-            continue
-        is_meme = beat.kind in ("meme", "sticker")
-        if is_meme and (counts.get("meme", 0) + counts.get("sticker", 0) >= MAX_MEMES
-                        or (last_meme_at is not None and beat.at_s - last_meme_at < MIN_MEME_GAP_S)):
             continue
         if beat.kind in last_at_by_kind and beat.at_s - last_at_by_kind[beat.kind] < MIN_SAME_KIND_GAP_S:
             continue
@@ -156,8 +152,6 @@ def enforce_limits(beats):
         last_at_by_kind[beat.kind] = beat.at_s
         if beat.is_cutaway:
             last_cutaway_at = beat.at_s
-        if is_meme:
-            last_meme_at = beat.at_s
     return kept
 
 
