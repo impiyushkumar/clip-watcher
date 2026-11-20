@@ -12,8 +12,14 @@ key) watches the clip and writes the "use when" description for you:
     python3 -m clipwatcher add-meme clip.mp4 --name crying-guy --use-when "someone fails badly"
     python3 -m clipwatcher memes                                    # list what's in the library
 
-Everything in this folder except this README is git-ignored: your library stays private and
-is not published with the repo. Only add clips you have the right to use. Copyrighted movie,
-TV or music clips can get Shorts claimed, muted or removed, and campaigns reject those views.
-Good sources: clips you film yourself, public-domain footage, and meme templates whose
-creators allow reuse.
+A starter pack of ~30 popular reaction memes (vine boom stare, surprised Pikachu, coffin
+dance, to be continued, GTA wasted, CJ "here we go again"…):
+
+    python3 -m clipwatcher import-memes packs/reaction-memes.txt
+
+YouTube blocks cloud servers, so run that on your own PC and copy `memes/` to the server, or
+set `YTDLP_COOKIES` to a cookies.txt exported from your browser.
+
+Everything in this folder except this README is git-ignored. These are third-party clips, so
+using them is your call: short reaction memes are rarely claimed, but movie scenes and
+songs can get a Short muted or claimed.

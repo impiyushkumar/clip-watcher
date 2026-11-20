@@ -128,3 +128,30 @@ class BeatValidationTest(unittest.TestCase):
         self.assertEqual([(beat.at_s, beat.kind) for beat in beats],
                          [(1.0, "sound"), (2.0, "text_card"), (5.0, "emoji")])
         self.assertEqual(beats[-1].duration_s, 2.5)
+
+
+class LibraryImportTest(unittest.TestCase):
+    def test_myinstants_parsing(self):
+        from clipwatcher.library_import import INSTANT_PATTERN
+        page = ('<button class="small-button" onclick="play(\'/media/sounds/vine-boom.mp3\', \'loader-1\', \'x\')" '
+                'title="Play" type="button"></button><div id="loader-1" class="loader"></div>'
+                '<a href="/en/instant/x/" class="instant-link link-secondary">VINE BOOM SOUND</a>')
+        match = INSTANT_PATTERN.search(page)
+        self.assertEqual((match.group("path"), match.group("title")), ("/media/sounds/vine-boom.mp3", "VINE BOOM SOUND"))
+
+
+class SoundLibraryMenuTest(unittest.TestCase):
+    def test_library_sounds_join_the_menu(self):
+        import json, os, tempfile
+        from clipwatcher import paths
+        from clipwatcher.render import sound_design
+        sfx_dir = tempfile.mkdtemp()
+        os.makedirs(os.path.join(sfx_dir, "reaction"))
+        open(os.path.join(sfx_dir, "reaction", "bruh.mp3"), "wb").write(b"x")
+        json.dump({"reaction/bruh.mp3": {"use_when": "disappointment, a dumb move"}},
+                  open(os.path.join(sfx_dir, "catalog.json"), "w"))
+        with mock.patch.object(paths, "SFX_DIR", sfx_dir):
+            menu = sound_design.load_sound_menu()
+            self.assertEqual(menu["custom/reaction/bruh.mp3"], "disappointment, a dumb move")
+            self.assertEqual(sound_design.sound_files("custom/reaction/bruh.mp3"),
+                             [os.path.join(sfx_dir, "reaction", "bruh.mp3")])

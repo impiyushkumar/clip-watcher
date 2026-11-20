@@ -48,6 +48,7 @@ scripts/run.sh  (one per machine; systemd runs it on servers)
 | `clipwatcher/heavy_job.py` | File lock so only one CPU-heavy job runs at a time across all channels. |
 | `clipwatcher/gemini.py` | Optional Gemini JSON calls (text + one image, retries, backup models). Returns None without a key. |
 | `clipwatcher/media_kit.py` | Builds `assets/sound_kit/` + `assets/emoji/` (`python3 -m clipwatcher build-kit`). `CATEGORY_GUIDE` = folder + "use when" for every sound category. |
+| `clipwatcher/library_import.py` | Fills the private library: `import-sounds` (MyInstants -> `sounds/sfx/<group>/`), `label-sounds` (Gemini groups + describes), `import-memes <pack>` (yt-dlp -> `memes/`). |
 | `clipwatcher/learner.py` | Self-learning from `clips/scoreboard.csv` -> `clips/auto.json` + `clips/learning.md`. |
 | `clipwatcher/rerender.py` | Rebuild queued clips in the current style. |
 | **`clipwatcher/capture/`** | **Stage 1**: chat + recording -> raw clips. |
@@ -87,7 +88,8 @@ scripts/run.sh  (one per machine; systemd runs it on servers)
 | `assets/sound_kit/<group>/<category>/` | 443 CC0 sounds, grouped by WHEN to use them (impact, fail, win, hype, danger, comedy, transition, money). `catalog.json` = "use when" per category (what Gemini reads); `README.md` = same table. Generated: rebuild, don't hand-edit. |
 | `assets/emoji/<name>.webm` | 141 animated Noto emojis (VP9 with transparency, CC BY 4.0). Generated. |
 | `assets/CREDITS.md` | Sources and licenses of everything in `assets/`. |
-| `sounds/sfx/`, `sounds/music/` | User's own sounds (added to Gemini's menu as `custom/...`) and background music. |
+| `sounds/sfx/<group>/`, `sounds/music/` | Private sound library (git-ignored): imported meme sounds + `catalog.json`, in Gemini's menu as `custom/<group>/<file>`; background music. |
+| `packs/*.txt` | Meme packs: "search or URL \| name \| use when" lines for `import-memes`. |
 | `memes/` | User's reaction meme library (git-ignored except README). Add with `python3 -m clipwatcher add-meme`. |
 | `docs/` | `viral-playbook.md` (why everything is built this way), `setup-youtube.md`, `setup-meta.md`, `server.md`. |
 | `tests/` | `unittest` suite, incl. a real ffmpeg end-to-end test. |

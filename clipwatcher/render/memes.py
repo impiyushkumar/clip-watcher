@@ -74,7 +74,12 @@ def fetch_source(source, work_dir):
     if not shutil.which("yt-dlp"):
         raise RuntimeError("downloading a URL needs yt-dlp: pip install yt-dlp (or pass a local file)")
     output_template = os.path.join(work_dir, "source.%(ext)s")
-    subprocess.run(["yt-dlp", "-q", "-f", "mp4/best", "-o", output_template, source], check=True)
+    cookies = ["--cookies", settings.YTDLP_COOKIES] if settings.YTDLP_COOKIES else []
+    subprocess.run(["yt-dlp", "-q", "--no-warnings", *cookies, "--match-filter", "duration < 300",
+                    "--max-downloads", "1", "-f", "bv*[height<=720]+ba/b[height<=720]/bv*+ba/b",
+                    "--merge-output-format", "mp4", "-o", output_template, source])
+    if not any(name.startswith("source.") for name in os.listdir(work_dir)):
+        raise RuntimeError("download failed (YouTube blocks servers: set YTDLP_COOKIES or run on your PC)")
     return next(os.path.join(work_dir, name) for name in os.listdir(work_dir) if name.startswith("source."))
 
 

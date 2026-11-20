@@ -60,7 +60,7 @@ def fetch_stream_info(stream_url, channel):
         return stream_info
     try:
         output = subprocess.run(["streamlink", "--json", stream_url],
-                                capture_output=True, text=True, timeout=40).stdout
+                                capture_output=True, text=True, errors="replace", timeout=40).stdout
         metadata = json.loads(output or "{}").get("metadata") or {}
         stream_info["creator"] = metadata.get("author") or stream_info["creator"]
         stream_info["game"] = metadata.get("category") or ""

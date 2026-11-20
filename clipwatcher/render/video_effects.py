@@ -111,7 +111,7 @@ def edit_video(raw_path, output_path, start_s, length_s, chunks, hook, emphasis=
 def has_audio(media_path):
     probe = subprocess.run(["ffprobe", "-v", "error", "-select_streams", "a", "-show_entries",
                             "stream=index", "-of", "csv=p=0", media_path],
-                           capture_output=True, text=True)
+                           capture_output=True, text=True, errors="replace")
     return probe.stdout.strip() != ""
 
 

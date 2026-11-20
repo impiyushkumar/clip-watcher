@@ -229,12 +229,12 @@ def slugify(text):
 
 def run_ffmpeg(*arguments):
     return subprocess.run(["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", *arguments],
-                          capture_output=True, text=True)
+                          capture_output=True, text=True, errors="replace")
 
 
 def peak_dbfs(audio_path):
     output = subprocess.run(["ffmpeg", "-hide_banner", "-i", audio_path, "-af", "volumedetect", "-f", "null", "-"],
-                            capture_output=True, text=True).stderr
+                            capture_output=True, text=True, errors="replace").stderr
     match = re.search(r"max_volume: (-?[\d.]+) dB", output)
     return float(match.group(1)) if match else None
 
@@ -271,7 +271,7 @@ def download_kenney_pack(pack, work_dir):
     subprocess.run(curl + ["-o", os.devnull, page_url], check=True)
     link_reply = subprocess.run(curl + ["-e", page_url, "-H", "Accept: application/json",
                                         f"https://kenney.nl/download-link/{f'assets/{pack}'.encode().hex()}"],
-                                capture_output=True, text=True).stdout
+                                capture_output=True, text=True, errors="replace").stdout
     download_url = json.loads(link_reply)["url"]
     zip_path = os.path.join(work_dir, pack + ".zip")
     subprocess.run(curl + ["-o", zip_path, download_url], check=True)
