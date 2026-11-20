@@ -1,5 +1,6 @@
-"""Read live chat without logging in. Each reader is a generator that yields the arrival
-time (unix seconds) of every chat message and reconnects forever on errors."""
+"""Read live chat without logging in. Each reader is a generator that yields
+(arrival_ts, message_text) for every chat message and reconnects forever on errors.
+The arrival times drive spike detection; the texts tell Gemini what chat reacted to."""
 import json
 import random
 import socket
@@ -12,7 +13,7 @@ KICK_PUSHER_URL = ("wss://ws-us2.pusher.com/app/32cbd69e4b950bf97679"
                    "?protocol=7&client=js&version=8.4.0-rc2&flash=false")
 
 
-def twitch_message_times(channel):
+def twitch_messages(channel):
     """Twitch: anonymous IRC as a random justinfanNNNNN user."""
     while True:
         try:
@@ -31,7 +32,8 @@ def twitch_message_times(channel):
                     if line.startswith(b"PING"):
                         irc.sendall(line.replace(b"PING", b"PONG", 1) + b"\r\n")
                     elif b" PRIVMSG #" in line:
-                        yield time.time()
+                        _channel, _separator, message = line.partition(b" PRIVMSG #")[2].partition(b" :")
+                        yield time.time(), message.decode("utf-8", errors="replace")
         except (OSError, ConnectionError) as error:
             log(f"chat error: {error}; reconnecting in 5s")
             time.sleep(5)
@@ -46,15 +48,15 @@ def youtube_live_url(channel):
     return f"https://www.youtube.com/@{channel.lstrip('@')}/live"
 
 
-def youtube_message_times(channel):
+def youtube_messages(channel):
     """YouTube Live chat via the chat-downloader package."""
     from chat_downloader import ChatDownloader
     url = youtube_live_url(channel)
     while True:
         try:
             log(f"connecting to YouTube chat {url}")
-            for _message in ChatDownloader().get_chat(url, message_groups=["messages"]):
-                yield time.time()
+            for message in ChatDownloader().get_chat(url, message_groups=["messages"]):
+                yield time.time(), str(message.get("message", ""))
             log("YouTube chat ended; retrying in 30s")
         except Exception as error:
             log(f"YouTube chat error: {error}; retrying in 30s")
@@ -72,7 +74,7 @@ def kick_chatroom_id(channel_slug):
         return json.load(urllib.request.urlopen(request, timeout=20))["chatroom"]["id"]
 
 
-def kick_message_times(channel_slug):
+def kick_messages(channel_slug):
     """Kick: public Pusher websocket."""
     import websocket
     chatroom_id = None
@@ -90,16 +92,21 @@ def kick_message_times(channel_slug):
                 if event_name == "pusher:ping":
                     socket_connection.send(json.dumps({"event": "pusher:pong", "data": {}}))
                 elif event_name.endswith("ChatMessageEvent"):
-                    yield time.time()
+                    try:
+                        content = json.loads(message.get("data") or "{}").get("content", "")
+                    except (TypeError, ValueError):
+                        content = ""
+                    yield time.time(), str(content)
         except Exception as error:
             log(f"Kick chat error: {error}; reconnecting in 5s")
             time.sleep(5)
 
 
-CHAT_READERS = {"twitch": twitch_message_times,
-                "youtube": youtube_message_times,
-                "kick": kick_message_times}
+CHAT_READERS = {"twitch": twitch_messages,
+                "youtube": youtube_messages,
+                "kick": kick_messages}
 
 
-def message_times(platform, channel):
+def messages(platform, channel):
+    """(arrival_ts, text) for every chat message of `channel`, forever."""
     return CHAT_READERS[platform](channel)

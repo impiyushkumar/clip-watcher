@@ -29,9 +29,15 @@ every 1–2 s, each one synced to a word or an action, escalating to the payoff:
 - **reaction memes with their own audio** (screams, a disgusted face, an explosion) right after the line they react to
 - VFX overlays (fire, smoke) on dramatic moments
 
-clip-watcher turns this into a **beat sheet** (`render/beats.py`): Gemini watches a frame grid
-(every 1.5 s, time-stamped) and the word-timed transcript, then plans 4–10 beats across the
-clip (sound, emoji, zoom, text_card, meme, sticker) from the full kit and your meme library.
+clip-watcher turns this into a **beat sheet** (`render/beats.py`). Gemini **watches and
+listens to the clip itself** (a small copy with sound), reads the word-timed transcript and the
+**live chat** during the clip (chat tells it what viewers found funny), then plans beats across
+the clip (sound, emoji, zoom, text_card, meme, sticker) from the full kit and the meme library.
+**Nothing is placed by guessing:** every beat needs a reason plus evidence: the words spoken at
+that moment, a chat message reacting to it, or the visible action. Quotes and chat lines are
+checked against the transcript and chat at that time, and beats that fail are dropped. Every
+clip gets `clips/ready/<clip>.edit.json`, which says what Gemini understood and why each beat
+is there. Without a Gemini key there are no memes at all, only the peak zoom and sound.
 Text cards are generated. Meme sounds (1,000+ from MyInstants) and reaction videos (starter
 pack in `packs/reaction-memes.txt`) fill the private library: `import-sounds`, `import-memes`.
 

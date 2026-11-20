@@ -15,6 +15,7 @@ import subprocess
 import sys
 import threading
 import time
+from collections import deque
 
 from clipwatcher import settings
 from clipwatcher.capture import chat
@@ -28,6 +29,9 @@ from clipwatcher.log import log
 from clipwatcher import paths
 
 MANUAL_CLIP_SCORE = 10 ** 6  # your own Enter-key picks are posted first
+CHAT_HISTORY_MESSAGES = 5000   # recent chat kept in memory
+CHAT_MESSAGES_PER_CLIP = 300   # chat lines handed to Gemini per clip
+CHAT_LAG_S = 8                 # chat reacts a few seconds after the moment
 
 
 def parse_args():
@@ -97,14 +101,17 @@ def main():
         f"each spike); upload: {args.upload}")
 
     pending = PendingCounter()
-    render_queue = queue.Queue()  # (raw_path, clip_name, score, seam_y), rendered one at a time
+    render_queue = queue.Queue()  # (raw_path, clip_name, score, seam_y, chat_messages), one at a time
+    chat_history = deque(maxlen=CHAT_HISTORY_MESSAGES)  # (arrival_ts, text): what chat said, for Gemini
+    chat_lock = threading.Lock()
 
     def render_worker():
         while True:
-            raw_path, clip_name, score, seam_y = render_queue.get()
+            raw_path, clip_name, score, seam_y, chat_messages = render_queue.get()
             try:
                 job = ClipJob(clip_name=clip_name, raw_path=raw_path, source_url=source_url,
                               stream_info=stream_info, hashtags=args.tags, seam_y=seam_y,
+                              chat_messages=chat_messages,
                               length_s=args.length, spike_at_s=before_s, score=score,
                               whisper_model=args.model, upload_targets=args.upload,
                               privacy=args.privacy, queue_for_schedule=args.queue)
@@ -133,9 +140,16 @@ def main():
                                 facecam_box=box)
         seam_y = split_heights(settings.output_size()[1])[0] if box else None
         if raw_path:
-            render_queue.put((raw_path, clip_name, score, seam_y))
+            render_queue.put((raw_path, clip_name, score, seam_y,
+                              chat_in_clip(spike_ts - before_s, spike_ts + after_s + CHAT_LAG_S)))
         else:
             pending.change(-1)
+
+    def chat_in_clip(start_ts, end_ts):
+        """[(seconds into the raw clip, text)] of chat messages between start_ts and end_ts."""
+        with chat_lock:
+            return [(round(message_ts - start_ts, 1), text) for message_ts, text in chat_history
+                    if start_ts <= message_ts <= end_ts and text.strip()][:CHAT_MESSAGES_PER_CLIP]
 
     def make_clip(spike_ts, score=0):
         clip_name = f"{args.platform}_{safe_channel}_{time.strftime('%Y%m%d_%H%M%S', time.localtime(spike_ts))}"
@@ -175,7 +189,9 @@ def main():
         threading.Thread(target=read_enter_key_forever, daemon=True).start()
         log("tip: press Enter any time to clip the moment yourself")
 
-    for message_ts in chat.message_times(args.platform, channel):
+    for message_ts, message_text in chat.messages(args.platform, channel):
+        with chat_lock:
+            chat_history.append((message_ts, message_text))
         with detector_lock:
             handle_spikes(detector.add_message(message_ts))
 

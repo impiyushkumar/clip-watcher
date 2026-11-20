@@ -52,7 +52,7 @@ class VideoPipelineTest(TempRepoTestCase):
     def setUp(self):
         super().setUp()
         for name, value in {"OUTPUT_RESOLUTION": "180x320", "FFMPEG_THREADS": "1", "LAYOUT": "split",
-                            "MEME_SECONDS": 1.0, "MEME_CHANCE": 1.0, "GEMINI_API_KEY": "",
+                            "MEME_SECONDS": 1.0, "GEMINI_API_KEY": "",
                             "RCLONE_DEST": ""}.items():
             patcher = mock.patch.object(settings, name, value)
             patcher.start()
@@ -102,12 +102,13 @@ class VideoPipelineTest(TempRepoTestCase):
         self.assertAlmostEqual(start_s + length_s, 14.0 + 0.3 + settings.AFTER_PEAK_S, delta=0.5)  # ends after peak
         self.assertAlmostEqual(length_s, 10, delta=0.1)
         final_path = os.path.join(paths.READY_CLIPS_DIR, "twitch_test_2.mp4")
-        self.assertAlmostEqual(duration_s(final_path), 10 + settings.MEME_SECONDS, delta=0.6)  # + meme cutaway
+        self.assertAlmostEqual(duration_s(final_path), 10, delta=0.6)  # no Gemini -> no guessed meme cutaway
         self.assertAlmostEqual(integrated_loudness(final_path), settings.LOUDNESS_LUFS, delta=2.0)
         self.assertIn("KAI CENAT", queue_item["hook"] + queue_item["title"].upper())
         self.assertTrue(queue_item["title"])
         self.assertFalse(os.path.exists(raw_path))
-        leftovers = [name for name in os.listdir(paths.READY_CLIPS_DIR) if ".edit." in name or ".meme." in name]
+        leftovers = [name for name in os.listdir(paths.READY_CLIPS_DIR)
+                     if name.endswith(".mp4") and (".edit." in name or ".meme." in name or ".work" in name)]
         self.assertEqual(leftovers, [])
         self.assertTrue(os.path.exists(os.path.join(paths.QUEUE_DIR, "twitch_test_2.json")))
 
@@ -123,12 +124,12 @@ class VideoPipelineTest(TempRepoTestCase):
             {"word": " way", "start": 1.3, "end": 1.6, "probability": 0.9}]}]}
         reply = {"hook": "PEAK GTA 6 NPC MOMENT", "emphasis": "PEAK", "title": "xQc vs NPC in GTA 6 😭",
                  "comment": "Who wins? 😭", "beats": [
-                     {"at": 1.3, "kind": "sound", "value": "impact/punch"},
-                     {"at": 1.3, "kind": "emoji", "value": "skull"},
-                     {"at": 3.0, "kind": "text_card", "value": "nobody cares", "duration": 0.8},
-                     {"at": 4.5, "kind": "sticker", "value": "crying-guy.mp4", "duration": 1.5},
-                     {"at": 6.0, "kind": "meme", "value": "crying-guy.mp4", "duration": 1.0},
-                     {"at": 7.0, "kind": "emoji", "value": "fire"},
+                     {"at": 1.3, "kind": "sound", "value": "impact/punch", "reason": "r", "quote": "no way"},
+                     {"at": 1.3, "kind": "emoji", "value": "skull", "reason": "r", "visual": "v"},
+                     {"at": 3.0, "kind": "text_card", "value": "nobody cares", "duration": 0.8, "reason": "r", "visual": "v"},
+                     {"at": 4.5, "kind": "sticker", "value": "crying-guy.mp4", "duration": 1.5, "reason": "r", "visual": "v"},
+                     {"at": 6.0, "kind": "meme", "value": "crying-guy.mp4", "duration": 1.0, "reason": "r", "visual": "v"},
+                     {"at": 7.0, "kind": "emoji", "value": "fire", "reason": "r", "visual": "v"},
                      {"at": 8.5, "kind": "zoom", "value": ""},
                      {"at": 9.0, "kind": "made-up-kind", "value": "x"}]}
         job = pipeline.ClipJob(clip_name="twitch_test_3", raw_path=raw_path, source_url="https://twitch.tv/xqc",
@@ -143,6 +144,9 @@ class VideoPipelineTest(TempRepoTestCase):
         self.assertAlmostEqual(integrated_loudness(final_path), settings.LOUDNESS_LUFS, delta=2.0)
         self.assertEqual(queue_item["hook"], "PEAK GTA 6 NPC MOMENT")
         self.assertEqual(queue_item["comment"], "Who wins? 😭")
+        with open(os.path.join(paths.READY_CLIPS_DIR, "twitch_test_3.edit.json"), encoding="utf-8") as report_file:
+            report = json.load(report_file)
+        self.assertTrue(all(beat.get("reason") for beat in report["beats"] if beat["kind"] != "zoom"))  # says why
         leftovers = [name for name in os.listdir(paths.READY_CLIPS_DIR) if ".work" in name or name.endswith(".ass")]
         self.assertEqual(leftovers, [])
 
